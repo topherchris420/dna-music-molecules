@@ -1,12 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import * as Tone from "tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Play, Pause, Info } from "lucide-react";
 import { toast } from "sonner";
 import { DNAVisualizer } from "./DNAVisualizer";
 import { FrequencyInfo } from "./FrequencyInfo";
+import { EvolutionaryMode, EvolutionMutation } from "./EvolutionaryMode";
+import { QuantumOverlay } from "./QuantumOverlay";
+import { BiofeedbackInput } from "./BiofeedbackInput";
+import { OrganismSelector } from "./OrganismSelector";
+import { CymaticScene } from "./CymaticScene";
 
 // Real DNA base frequencies from IR spectroscopy, scaled to audible range
 // Based on Susan Alexjander's work mapping DNA vibrations to F# scale
@@ -29,6 +35,19 @@ export const DNASynthesizer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [showInfo, setShowInfo] = useState(false);
+  const [selectedTab, setSelectedTab] = useState("visualizer");
+  const [organismName, setOrganismName] = useState("Custom");
+  
+  // Advanced features state
+  const [evolutionEnabled, setEvolutionEnabled] = useState(false);
+  const [biofeedbackEnabled, setBiofeedbackEnabled] = useState(false);
+  const [currentMutation, setCurrentMutation] = useState<EvolutionMutation>({
+    frequencyDetune: 0,
+    tempoVariation: 1,
+    harmonicBlend: 0,
+  });
+  const [biofeedbackModulation, setBiofeedbackModulation] = useState(0);
+  
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const sequenceRef = useRef<Tone.Sequence | null>(null);
 
@@ -55,7 +74,7 @@ export const DNASynthesizer = () => {
     };
   }, []);
 
-  const playSequence = async () => {
+  const playSequence = useCallback(async () => {
     if (!synthRef.current) return;
 
     await Tone.start();
@@ -76,8 +95,29 @@ export const DNASynthesizer = () => {
     let index = 0;
     sequenceRef.current = new Tone.Sequence(
       (time, base) => {
-        const freq = DNA_FREQUENCIES[base as keyof typeof DNA_FREQUENCIES];
-        synthRef.current?.triggerAttackRelease(freq, "4n", time);
+        // Apply evolutionary mutations
+        let freq = DNA_FREQUENCIES[base as keyof typeof DNA_FREQUENCIES];
+        freq += currentMutation.frequencyDetune * 0.1; // Detune in Hz
+        
+        // Apply biofeedback modulation to volume
+        if (synthRef.current) {
+          const volume = -10 + biofeedbackModulation * 10; // -10dB to 0dB
+          synthRef.current.volume.value = volume;
+        }
+        
+        // Apply harmonic blending
+        if (currentMutation.harmonicBlend > 0.3 && synthRef.current) {
+          // Play harmonics
+          const harmonic = freq * 2;
+          synthRef.current.triggerAttackRelease(
+            [freq, harmonic],
+            "4n",
+            time,
+            0.5 + currentMutation.harmonicBlend * 0.3
+          );
+        } else {
+          synthRef.current?.triggerAttackRelease(freq, "4n", time);
+        }
         
         Tone.Draw.schedule(() => {
           setCurrentIndex(index);
@@ -85,14 +125,17 @@ export const DNASynthesizer = () => {
         }, time);
       },
       validBases,
-      "4n"
+      `${4 / currentMutation.tempoVariation}n` // Apply tempo variation
     );
 
     sequenceRef.current.start(0);
     Tone.Transport.start();
     setIsPlaying(true);
-    toast.success("Listening to the song of DNA...");
-  };
+    toast.success(evolutionEnabled 
+      ? "Listening to DNA evolving in real-time..." 
+      : "Listening to the song of DNA..."
+    );
+  }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled]);
 
   const stopSequence = () => {
     Tone.Transport.stop();
@@ -104,7 +147,37 @@ export const DNASynthesizer = () => {
   const handleSequenceChange = (value: string) => {
     const filtered = value.toUpperCase().replace(/[^ATCG]/g, "");
     setSequence(filtered);
+    setOrganismName("Custom");
   };
+
+  const handleOrganismSelect = (seq: string, name: string) => {
+    setSequence(seq);
+    setOrganismName(name);
+    if (isPlaying) {
+      stopSequence();
+    }
+    toast.success(`Loaded ${name} DNA sequence`);
+  };
+
+  const handleMutation = useCallback((mutation: EvolutionMutation) => {
+    setCurrentMutation(mutation);
+    if (isPlaying) {
+      // Restart sequence with new mutations
+      stopSequence();
+      setTimeout(() => playSequence(), 100);
+    }
+  }, [isPlaying]);
+
+  const handleBiofeedback = useCallback((modulation: number) => {
+    setBiofeedbackModulation(modulation);
+  }, []);
+
+  // Get current frequencies for visualizations
+  const currentFrequencies = sequence
+    .toUpperCase()
+    .split("")
+    .filter(base => ["A", "T", "C", "G"].includes(base))
+    .map(base => DNA_FREQUENCIES[base as keyof typeof DNA_FREQUENCIES]);
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -120,11 +193,14 @@ export const DNASynthesizer = () => {
             <span className="italic text-foreground">DNA is F♯</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Explore the musical frequencies of DNA's four bases through real infrared vibrational spectra.
+            Experience evolution, quantum harmonics, and cymatic geometry in real time.
             <br />
-            Everything is included: synthesis, visualization, and education.
+            Everything is included: synthesis, biofeedback, visualization, and education.
           </p>
           <p className="text-sm text-muted-foreground">
+            {organismName !== "Custom" && (
+              <span className="text-primary font-medium">{organismName} • </span>
+            )}
             Listen to the song your molecules have been humming since life began.
           </p>
         </div>
@@ -180,13 +256,39 @@ export const DNASynthesizer = () => {
               </Button>
             </div>
 
-            {/* Visualizer */}
-            <DNAVisualizer
-              sequence={sequence}
-              currentIndex={currentIndex}
-              isPlaying={isPlaying}
-              colors={DNA_COLORS}
-            />
+            {/* Advanced Visualizations */}
+            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-muted/30">
+                <TabsTrigger value="visualizer">DNA Sequencer</TabsTrigger>
+                <TabsTrigger value="quantum">Quantum Field</TabsTrigger>
+                <TabsTrigger value="cymatic">Cymatic 3D</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="visualizer" className="mt-4">
+                <DNAVisualizer
+                  sequence={sequence}
+                  currentIndex={currentIndex}
+                  isPlaying={isPlaying}
+                  colors={DNA_COLORS}
+                />
+              </TabsContent>
+              
+              <TabsContent value="quantum" className="mt-4">
+                <QuantumOverlay
+                  frequencies={currentFrequencies}
+                  isPlaying={isPlaying}
+                  colors={Object.values(DNA_COLORS)}
+                />
+              </TabsContent>
+              
+              <TabsContent value="cymatic" className="mt-4">
+                <CymaticScene
+                  frequencies={currentFrequencies}
+                  isPlaying={isPlaying}
+                  biofeedback={biofeedbackModulation}
+                />
+              </TabsContent>
+            </Tabs>
 
             {/* Frequency Info */}
             {showInfo && (
@@ -194,6 +296,27 @@ export const DNASynthesizer = () => {
             )}
           </div>
         </Card>
+
+        {/* Advanced Features */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <EvolutionaryMode
+            enabled={evolutionEnabled}
+            onToggle={setEvolutionEnabled}
+            onMutation={handleMutation}
+          />
+          
+          <BiofeedbackInput
+            enabled={biofeedbackEnabled}
+            onToggle={setBiofeedbackEnabled}
+            onBiofeedback={handleBiofeedback}
+          />
+        </div>
+
+        {/* Organism Selector */}
+        <OrganismSelector
+          onSelect={handleOrganismSelect}
+          currentSequence={sequence}
+        />
 
         {/* Educational Footer */}
         <div className="text-center text-sm text-muted-foreground space-y-2">
