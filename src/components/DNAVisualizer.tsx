@@ -147,7 +147,7 @@ export const DNAVisualizer = ({
   }, [sequence, currentIndex, isPlaying, colors]);
 
   return (
-    <div className="relative w-full h-64 rounded-lg overflow-hidden border border-primary/20 bg-background/30">
+    <div className="relative w-full h-64 rounded-lg overflow-hidden border border-border bg-card/20">
       <canvas
         ref={canvasRef}
         className="w-full h-full"

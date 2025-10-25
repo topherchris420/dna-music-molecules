@@ -25,9 +25,9 @@ export const FrequencyInfo = ({ frequencies, colors }: FrequencyInfoProps) => {
       {Object.entries(frequencies).map(([base, freq]) => (
         <Card
           key={base}
-          className="p-4 bg-card/30 backdrop-blur border-primary/10 hover:border-primary/30 transition-all"
+          className="p-4 bg-card/20 border-border hover:border-primary/30 transition-all"
           style={{
-            boxShadow: `0 0 20px ${colors[base as keyof typeof colors]}40`,
+            boxShadow: `0 0 15px ${colors[base as keyof typeof colors]}20`,
           }}
         >
           <div className="space-y-2">

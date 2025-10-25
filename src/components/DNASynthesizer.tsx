@@ -107,34 +107,41 @@ export const DNASynthesizer = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/10 p-8">
-      <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-6xl mx-auto space-y-12 animate-fade-in">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-pulse-glow">
-            DNA is F♯
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            The Molecular Music Synthesizer
+        <div className="text-center space-y-6 pt-12">
+          <p className="text-sm text-muted-foreground tracking-wider uppercase">
+            Molecular Music Synthesizer
           </p>
-          <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
-            Listen to the song your molecules have been humming since life began
+          <h1 className="text-6xl md:text-7xl lg:text-8xl font-serif leading-tight">
+            <span className="font-normal text-foreground">Don't just hear</span>
+            <br />
+            <span className="italic text-foreground">DNA is F♯</span>
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+            Explore the musical frequencies of DNA's four bases through real infrared vibrational spectra.
+            <br />
+            Everything is included: synthesis, visualization, and education.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Listen to the song your molecules have been humming since life began.
           </p>
         </div>
 
         {/* Main Card */}
-        <Card className="p-8 bg-card/50 backdrop-blur-xl border-primary/20">
+        <Card className="p-8 bg-card/40 backdrop-blur-sm border-border/50">
           <div className="space-y-6">
             {/* Sequence Input */}
             <div className="space-y-3">
-              <label className="text-sm font-medium text-foreground/80">
+              <label className="text-sm font-medium text-muted-foreground">
                 DNA Sequence
               </label>
               <Input
                 value={sequence}
                 onChange={(e) => handleSequenceChange(e.target.value)}
                 placeholder="Enter DNA sequence (A, T, C, G)"
-                className="text-lg font-mono tracking-wider bg-background/50 border-primary/30 focus:border-primary"
+                className="text-lg font-mono tracking-wider bg-input border-border focus:border-primary transition-colors"
                 maxLength={32}
               />
               <p className="text-xs text-muted-foreground">
@@ -147,7 +154,7 @@ export const DNASynthesizer = () => {
               <Button
                 onClick={isPlaying ? stopSequence : playSequence}
                 size="lg"
-                className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/50"
+                className="bg-primary hover:bg-primary/90 text-white rounded-full px-8"
               >
                 {isPlaying ? (
                   <>
@@ -166,7 +173,7 @@ export const DNASynthesizer = () => {
                 onClick={() => setShowInfo(!showInfo)}
                 variant="outline"
                 size="lg"
-                className="border-primary/30 hover:bg-primary/10"
+                className="border-border hover:bg-muted rounded-full px-8"
               >
                 <Info className="mr-2 h-5 w-5" />
                 {showInfo ? "Hide" : "Show"} Info
