@@ -11,8 +11,9 @@ import { FrequencyInfo } from "./FrequencyInfo";
 import { EvolutionaryMode, EvolutionMutation } from "./EvolutionaryMode";
 import { QuantumOverlay } from "./QuantumOverlay";
 import { BiofeedbackInput } from "./BiofeedbackInput";
-import { OrganismSelector } from "./OrganismSelector";
+import { OrganismCategories } from "./OrganismCategories";
 import { CymaticScene } from "./CymaticScene";
+import { BottomSheet } from "./BottomSheet";
 
 // Real DNA base frequencies from IR spectroscopy, scaled to audible range
 // Based on Susan Alexjander's work mapping DNA vibrations to F# scale
@@ -180,24 +181,24 @@ export const DNASynthesizer = () => {
     .map(base => DNA_FREQUENCIES[base as keyof typeof DNA_FREQUENCIES]);
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-6xl mx-auto space-y-12 animate-fade-in">
+    <div className="min-h-screen bg-background p-4 sm:p-8 pb-32 md:pb-8">
+      <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12 animate-fade-in">
         {/* Header */}
-        <div className="text-center space-y-6 pt-12">
-          <p className="text-sm text-muted-foreground tracking-wider uppercase">
+        <div className="text-center space-y-4 sm:space-y-6 pt-4 sm:pt-12">
+          <p className="text-xs sm:text-sm text-muted-foreground tracking-wider uppercase">
             Molecular Music Synthesizer
           </p>
-          <h1 className="text-6xl md:text-7xl lg:text-8xl font-serif leading-tight">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif leading-tight">
             <span className="font-normal text-foreground">Don't just hear</span>
             <br />
             <span className="italic text-foreground">DNA is F♯</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4">
             Experience evolution, quantum harmonics, and cymatic geometry in real time.
-            <br />
+            <br className="hidden sm:block" />
             Everything is included: synthesis, biofeedback, visualization, and education.
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {organismName !== "Custom" && (
               <span className="text-primary font-medium">{organismName} • </span>
             )}
@@ -206,8 +207,8 @@ export const DNASynthesizer = () => {
         </div>
 
         {/* Main Card */}
-        <Card className="p-8 bg-card/40 backdrop-blur-sm border-border/50">
-          <div className="space-y-6">
+        <Card className="p-4 sm:p-6 md:p-8 bg-card/40 backdrop-blur-sm border-border/50">
+          <div className="space-y-4 sm:space-y-6">
             {/* Sequence Input */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-muted-foreground">
@@ -225,8 +226,8 @@ export const DNASynthesizer = () => {
               </p>
             </div>
 
-            {/* Controls */}
-            <div className="flex gap-4 items-center justify-center">
+            {/* Controls - Desktop only */}
+            <div className="hidden md:flex gap-4 items-center justify-center">
               <Button
                 onClick={isPlaying ? stopSequence : playSequence}
                 size="lg"
@@ -297,8 +298,8 @@ export const DNASynthesizer = () => {
           </div>
         </Card>
 
-        {/* Advanced Features */}
-        <div className="grid md:grid-cols-2 gap-6">
+        {/* Advanced Features - Desktop view */}
+        <div className="hidden md:grid md:grid-cols-2 gap-4 sm:gap-6">
           <EvolutionaryMode
             enabled={evolutionEnabled}
             onToggle={setEvolutionEnabled}
@@ -312,14 +313,23 @@ export const DNASynthesizer = () => {
           />
         </div>
 
-        {/* Organism Selector */}
-        <OrganismSelector
+        {/* Organism Selector with Categories */}
+        <OrganismCategories
+          organisms={[
+            { name: "Human", sequence: "ATCGATCGATCGATCG", description: "Homo sapiens — complex, adaptive, conscious", icon: "👤" },
+            { name: "Coral", sequence: "GCTAGCTAGCTAGCTA", description: "Ancient reef builder — symbiotic, regenerative", icon: "🪸" },
+            { name: "Tardigrade", sequence: "CGCGATATCGCGATAT", description: "Water bear — indestructible, extremophile", icon: "🐻" },
+            { name: "Mycelium", sequence: "TATACGCGATATATAT", description: "Fungal network — communicative, earth-binding", icon: "🍄" },
+            { name: "E. coli", sequence: "ATATATCGCGATATAT", description: "Bacterial pioneer — rapid, essential", icon: "🦠" },
+            { name: "Redwood", sequence: "CGATATCGATATCGAT", description: "Ancient tree — towering, enduring", icon: "🌲" },
+          ]}
           onSelect={handleOrganismSelect}
           currentSequence={sequence}
+          isPlaying={isPlaying}
         />
 
         {/* Educational Footer */}
-        <div className="text-center text-sm text-muted-foreground space-y-2">
+        <div className="text-center text-xs sm:text-sm text-muted-foreground space-y-2 px-4">
           <p>
             Based on the work of composer Susan Alexjander and biologist David Deamer
           </p>
@@ -328,6 +338,37 @@ export const DNASynthesizer = () => {
           </p>
         </div>
       </div>
+
+      {/* Mobile Bottom Sheet Controls */}
+      <BottomSheet
+        isPlaying={isPlaying}
+        onPlay={playSequence}
+        onStop={stopSequence}
+        organismName={organismName}
+      >
+        <div className="space-y-4">
+          <EvolutionaryMode
+            enabled={evolutionEnabled}
+            onToggle={setEvolutionEnabled}
+            onMutation={handleMutation}
+          />
+          
+          <BiofeedbackInput
+            enabled={biofeedbackEnabled}
+            onToggle={setBiofeedbackEnabled}
+            onBiofeedback={handleBiofeedback}
+          />
+
+          <Button
+            onClick={() => setShowInfo(!showInfo)}
+            variant="outline"
+            className="w-full"
+          >
+            <Info className="mr-2 h-4 w-4" />
+            {showInfo ? "Hide" : "Show"} Info
+          </Button>
+        </div>
+      </BottomSheet>
     </div>
   );
 };

@@ -94,13 +94,13 @@ export const BiofeedbackInput = ({ enabled, onToggle, onBiofeedback }: Biofeedba
   };
 
   return (
-    <Card className="p-6 bg-card/20 border-border space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Activity className="h-5 w-5 text-primary" />
-          <div>
-            <Label className="text-base font-medium">Biofeedback Loop</Label>
-            <p className="text-xs text-muted-foreground">
+    <Card className="p-4 sm:p-6 bg-card/20 border-border">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+          <div className="min-w-0">
+            <Label className="text-sm sm:text-base font-medium">Biofeedback Loop</Label>
+            <p className="text-xs text-muted-foreground hidden sm:block">
               Your voice and presence modulate the tonal mix
             </p>
           </div>
@@ -109,7 +109,7 @@ export const BiofeedbackInput = ({ enabled, onToggle, onBiofeedback }: Biofeedba
       </div>
 
       {enabled && (
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-4 mt-4 border-t border-border">
           <div className="flex items-center gap-3">
             <Mic className="h-4 w-4 text-muted-foreground" />
             <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">

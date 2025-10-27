@@ -41,13 +41,13 @@ export const EvolutionaryMode = ({ enabled, onToggle, onMutation }: Evolutionary
   }, [enabled, mutationRate, onMutation]);
 
   return (
-    <Card className="p-6 bg-card/20 border-border space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Dna className="h-5 w-5 text-primary" />
-          <div>
-            <Label className="text-base font-medium">Evolutionary Mode</Label>
-            <p className="text-xs text-muted-foreground">
+    <Card className="p-4 sm:p-6 bg-card/20 border-border">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <Dna className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
+          <div className="min-w-0">
+            <Label className="text-sm sm:text-base font-medium">Evolutionary Mode</Label>
+            <p className="text-xs text-muted-foreground hidden sm:block">
               Music evolves as life does — parameters mutate with each cycle
             </p>
           </div>
@@ -56,7 +56,7 @@ export const EvolutionaryMode = ({ enabled, onToggle, onMutation }: Evolutionary
       </div>
 
       {enabled && (
-        <div className="space-y-4 pt-2">
+        <div className="space-y-4 pt-4 mt-4 border-t border-border">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <Label>Mutation Rate</Label>
