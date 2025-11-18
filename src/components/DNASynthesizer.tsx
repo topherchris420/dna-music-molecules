@@ -336,6 +336,9 @@ export const DNASynthesizer = () => {
           <p>
             Mapping infrared vibrational frequencies of DNA bases to musical pitches
           </p>
+          <p className="text-xs opacity-70 mt-4">
+            built by Vers3Dynamics
+          </p>
         </div>
       </div>
 
