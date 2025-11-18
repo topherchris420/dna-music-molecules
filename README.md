@@ -6,7 +6,7 @@ An immersive web synthesizer that transforms DNA sequences into sound by mapping
 
 Built by **Vers3Dynamics**
 
-[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://your-app-url.lovable.app)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://dna-music-eta.vercel.app/)
 
 ## 🧬 About
 
