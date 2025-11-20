@@ -189,7 +189,7 @@ export const DNASynthesizer = () => {
             Molecular Music Synthesizer
           </p>
           <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif leading-tight">
-            <span className="font-normal text-foreground">Don't just hear</span>
+            <span className="font-normal text-foreground">DNA Sounds</span>
             <br />
             <span className="italic text-foreground">DNA is F♯</span>
           </h1>
