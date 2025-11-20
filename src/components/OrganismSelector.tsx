@@ -12,37 +12,37 @@ interface Organism {
 const ORGANISMS: Organism[] = [
   {
     name: "Human",
-    sequence: "ATCGATCGATCGATCG",
+    sequence: "ATCGATCGTAGCTAGCGGCCAATTTGGGCCCCAAATTTGCGATCG",
     description: "Homo sapiens — complex, adaptive, conscious",
     icon: "👤",
   },
   {
     name: "Coral",
-    sequence: "GCTAGCTAGCTAGCTA",
+    sequence: "GCTAGCTAGCCCCCGGGGTTTAAAGCTAGCTAGCCCGGGTTTAAA",
     description: "Ancient reef builder — symbiotic, regenerative",
     icon: "🪸",
   },
   {
     name: "Tardigrade",
-    sequence: "CGCGATATCGCGATAT",
+    sequence: "CGCGCGCGATATATATCGCGATATATCGCGCGCGATATCGATAT",
     description: "Water bear — indestructible, extremophile",
     icon: "🐻",
   },
   {
     name: "Mycelium",
-    sequence: "TATACGCGATATATAT",
+    sequence: "TATATATACGCGCGCGATATATACGCGATATATACGCGATATAT",
     description: "Fungal network — communicative, earth-binding",
     icon: "🍄",
   },
   {
     name: "E. coli",
-    sequence: "ATATATCGCGATATAT",
+    sequence: "ATATCGATATCGATCGATCGATATCGCGCGATATATATCGATCG",
     description: "Bacterial pioneer — rapid, essential",
     icon: "🦠",
   },
   {
     name: "Redwood",
-    sequence: "CGATATCGATATCGAT",
+    sequence: "CGATATCGCGCGATATCGATCGATATATCGCGATCGATCGATAT",
     description: "Ancient tree — towering, enduring",
     icon: "🌲",
   },
