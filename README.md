@@ -2,7 +2,7 @@
 
 > *from molecule to melody, from genome to symphony — life composes itself.*
 
-An immersive web synthesizer that transforms DNA sequences into sound by mapping the infrared vibrational frequencies of nucleotide bases (Adenine, Thymine, Cytosine, Guanine) to musical pitches in the F♯ scale.
+An immersive synthesizer that transforms DNA sequences into sound by mapping the infrared vibrational frequencies of nucleotide bases (Adenine, Thymine, Cytosine, Guanine) to musical pitches in the F♯ scale.
 
 Built by **Vers3Dynamics**
 
