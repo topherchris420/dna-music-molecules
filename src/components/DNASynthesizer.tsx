@@ -15,13 +15,13 @@ import { OrganismCategories } from "./OrganismCategories";
 import { CymaticScene } from "./CymaticScene";
 import { BottomSheet } from "./BottomSheet";
 
-// Real DNA base frequencies from IR spectroscopy, scaled to audible range
-// Based on Susan Alexjander's work mapping DNA vibrations to F# scale
+// DNA base frequencies mapped to F# scale with distinct tonal separation
+// Based on Susan Alexjander's work, adjusted for clear melodic distinction
 const DNA_FREQUENCIES = {
-  A: 545.6, // Adenine - C#
-  T: 543.4, // Thymine - C#
-  C: 537.8, // Cytosine - C
-  G: 550.0, // Guanine - C#
+  A: 370.0, // Adenine - F#
+  T: 466.2, // Thymine - A#
+  C: 554.4, // Cytosine - C#
+  G: 622.3, // Guanine - D#
 };
 
 const DNA_COLORS = {
@@ -189,7 +189,7 @@ export const DNASynthesizer = () => {
             Molecular Music Synthesizer
           </p>
           <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif leading-tight">
-            <span className="font-normal text-foreground">DNA Sounds</span>
+            <span className="font-normal text-foreground">R.A.I.N. Lab</span>
             <br />
             <span className="italic text-foreground">DNA is F♯</span>
           </h1>
