@@ -44,6 +44,15 @@ All colors MUST be HSL.
     --dna-cytosine: 320 90% 60%;
     --dna-guanine: 120 80% 50%;
     
+    /* Wetware Simulator Colors - Vers3Dynamics Brand */
+    --wetware-neural: 210 80% 65%;
+    --wetware-bioelectric: 260 70% 70%;
+    --wetware-resonance: 280 60% 75%;
+    --wetware-silver: 220 10% 70%;
+    --wetware-focus: 200 85% 60%;
+    --wetware-relaxation: 260 75% 65%;
+    --wetware-coherence: 280 70% 70%;
+    
     /* Typography */
     --font-serif: 'Playfair Display', 'Georgia', serif;
     
