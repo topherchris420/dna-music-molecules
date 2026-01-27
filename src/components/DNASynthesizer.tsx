@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Pause, Info } from "lucide-react";
+import { Play, Pause, FlaskConical, Music } from "lucide-react";
 import { toast } from "sonner";
 import { DNAVisualizer } from "./DNAVisualizer";
 import { FrequencyInfo } from "./FrequencyInfo";
@@ -14,10 +14,12 @@ import { BiofeedbackInput } from "./BiofeedbackInput";
 import { OrganismCategories } from "./OrganismCategories";
 import { CymaticScene } from "./CymaticScene";
 import { BottomSheet } from "./BottomSheet";
+import { HarmonyExplorer, getKeyMultiplier } from "./HarmonyExplorer";
+import { ScientificMode } from "./ScientificMode";
 
 // DNA base frequencies mapped to F# scale with distinct tonal separation
 // Based on Susan Alexjander's work, adjusted for clear melodic distinction
-const DNA_FREQUENCIES = {
+const BASE_DNA_FREQUENCIES = {
   A: 370.0, // Adenine - F#
   T: 466.2, // Thymine - A#
   C: 554.4, // Cytosine - C#
@@ -35,9 +37,10 @@ export const DNASynthesizer = () => {
   const [sequence, setSequence] = useState("ACGTACGT");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
-  const [showInfo, setShowInfo] = useState(false);
+  const [showScientificMode, setShowScientificMode] = useState(false);
   const [selectedTab, setSelectedTab] = useState("visualizer");
   const [organismName, setOrganismName] = useState("Custom");
+  const [currentKey, setCurrentKey] = useState("f-sharp");
   
   // Advanced features state
   const [evolutionEnabled, setEvolutionEnabled] = useState(false);
@@ -48,6 +51,15 @@ export const DNASynthesizer = () => {
     harmonicBlend: 0,
   });
   const [biofeedbackModulation, setBiofeedbackModulation] = useState(0);
+  
+  // Calculate frequencies based on current key
+  const keyMultiplier = getKeyMultiplier(currentKey);
+  const DNA_FREQUENCIES = {
+    A: BASE_DNA_FREQUENCIES.A * keyMultiplier,
+    T: BASE_DNA_FREQUENCIES.T * keyMultiplier,
+    C: BASE_DNA_FREQUENCIES.C * keyMultiplier,
+    G: BASE_DNA_FREQUENCIES.G * keyMultiplier,
+  };
   
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const sequenceRef = useRef<Tone.Sequence | null>(null);
@@ -247,20 +259,38 @@ export const DNASynthesizer = () => {
               </Button>
               
               <Button
-                onClick={() => setShowInfo(!showInfo)}
+                onClick={() => setShowScientificMode(!showScientificMode)}
                 variant="outline"
                 size="lg"
                 className="border-border hover:bg-muted rounded-full px-8"
               >
-                <Info className="mr-2 h-5 w-5" />
-                {showInfo ? "Hide" : "Show"} Info
+                <FlaskConical className="mr-2 h-5 w-5" />
+                {showScientificMode ? "Hide" : "Show"} Research
               </Button>
+            </div>
+
+            {/* Harmony Explorer */}
+            <div className="flex justify-center">
+              <HarmonyExplorer 
+                currentKey={currentKey}
+                onKeyChange={(key) => {
+                  setCurrentKey(key);
+                  if (isPlaying) {
+                    stopSequence();
+                    setTimeout(() => playSequence(), 100);
+                  }
+                  toast.success(`Shifted to ${key === "f-sharp" ? "F♯" : key.toUpperCase()} key`);
+                }}
+              />
             </div>
 
             {/* Advanced Visualizations */}
             <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 bg-muted/30">
-                <TabsTrigger value="visualizer">DNA Sequencer</TabsTrigger>
+                <TabsTrigger value="visualizer" className="gap-1">
+                  <Music className="w-3 h-3 hidden sm:inline" />
+                  DNA Sequencer
+                </TabsTrigger>
                 <TabsTrigger value="quantum">Quantum Field</TabsTrigger>
                 <TabsTrigger value="cymatic">Cymatic 3D</TabsTrigger>
               </TabsList>
@@ -291,9 +321,13 @@ export const DNASynthesizer = () => {
               </TabsContent>
             </Tabs>
 
-            {/* Frequency Info */}
-            {showInfo && (
-              <FrequencyInfo frequencies={DNA_FREQUENCIES} colors={DNA_COLORS} />
+            {/* Scientific Mode - Research View */}
+            {showScientificMode && (
+              <ScientificMode 
+                frequencies={BASE_DNA_FREQUENCIES} 
+                currentKey={currentKey}
+                keyMultiplier={keyMultiplier}
+              />
             )}
           </div>
         </Card>
@@ -363,13 +397,21 @@ export const DNASynthesizer = () => {
           />
 
           <Button
-            onClick={() => setShowInfo(!showInfo)}
+            onClick={() => setShowScientificMode(!showScientificMode)}
             variant="outline"
             className="w-full"
           >
-            <Info className="mr-2 h-4 w-4" />
-            {showInfo ? "Hide" : "Show"} Info
+            <FlaskConical className="mr-2 h-4 w-4" />
+            {showScientificMode ? "Hide" : "Show"} Research
           </Button>
+          
+          <HarmonyExplorer 
+            currentKey={currentKey}
+            onKeyChange={(key) => {
+              setCurrentKey(key);
+              toast.success(`Shifted to ${key === "f-sharp" ? "F♯" : key.toUpperCase()} key`);
+            }}
+          />
         </div>
       </BottomSheet>
     </div>
