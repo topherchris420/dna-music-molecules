@@ -11,8 +11,12 @@ interface CymaticGeometryProps {
 
 const CymaticGeometry = ({ frequencies, isPlaying, biofeedback }: CymaticGeometryProps) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const materialRef = useRef<THREE.ShaderMaterial>(null);
   const timeRef = useRef(0);
+
+  // Ensure we have valid frequencies
+  const safeFrequencies = frequencies.length >= 4 
+    ? frequencies.slice(0, 4) 
+    : [...frequencies, ...Array(4 - frequencies.length).fill(440)].slice(0, 4);
 
   // Create shader material for cymatic patterns
   const shaderMaterial = useMemo(
@@ -20,13 +24,19 @@ const CymaticGeometry = ({ frequencies, isPlaying, biofeedback }: CymaticGeometr
       new THREE.ShaderMaterial({
         uniforms: {
           time: { value: 0 },
-          frequencies: { value: frequencies.map(f => f / 1000) },
+          freq1: { value: safeFrequencies[0] / 1000 },
+          freq2: { value: safeFrequencies[1] / 1000 },
+          freq3: { value: safeFrequencies[2] / 1000 },
+          freq4: { value: safeFrequencies[3] / 1000 },
           biofeedback: { value: biofeedback },
           isPlaying: { value: isPlaying ? 1.0 : 0.0 },
         },
         vertexShader: `
           uniform float time;
-          uniform float frequencies[4];
+          uniform float freq1;
+          uniform float freq2;
+          uniform float freq3;
+          uniform float freq4;
           uniform float biofeedback;
           uniform float isPlaying;
           
@@ -40,15 +50,21 @@ const CymaticGeometry = ({ frequencies, isPlaying, biofeedback }: CymaticGeometr
             vec3 pos = position;
             
             if (isPlaying > 0.5) {
-              // Create cymatic wave patterns
-              float wave = 0.0;
-              for (int i = 0; i < 4; i++) {
-                wave += sin(pos.x * frequencies[i] * 10.0 + time) * 
-                        cos(pos.y * frequencies[i] * 10.0 + time) *
-                        sin(pos.z * frequencies[i] * 10.0 + time);
-              }
+              // Create cymatic wave patterns using individual frequencies
+              float wave = sin(pos.x * freq1 * 10.0 + time) * 
+                          cos(pos.y * freq1 * 10.0 + time) *
+                          sin(pos.z * freq1 * 10.0 + time);
+              wave += sin(pos.x * freq2 * 10.0 + time * 1.1) * 
+                      cos(pos.y * freq2 * 10.0 + time * 1.1) *
+                      sin(pos.z * freq2 * 10.0 + time * 1.1);
+              wave += sin(pos.x * freq3 * 10.0 + time * 0.9) * 
+                      cos(pos.y * freq3 * 10.0 + time * 0.9) *
+                      sin(pos.z * freq3 * 10.0 + time * 0.9);
+              wave += sin(pos.x * freq4 * 10.0 + time * 1.2) * 
+                      cos(pos.y * freq4 * 10.0 + time * 1.2) *
+                      sin(pos.z * freq4 * 10.0 + time * 1.2);
               
-              wave *= 0.15 * (1.0 + biofeedback * 0.5);
+              wave *= 0.1 * (1.0 + biofeedback * 0.5);
               pos += normal * wave;
             }
             
@@ -59,6 +75,8 @@ const CymaticGeometry = ({ frequencies, isPlaying, biofeedback }: CymaticGeometr
           uniform float time;
           uniform float biofeedback;
           uniform float isPlaying;
+          uniform float freq1;
+          uniform float freq2;
           
           varying vec3 vNormal;
           varying vec3 vPosition;
@@ -67,21 +85,28 @@ const CymaticGeometry = ({ frequencies, isPlaying, biofeedback }: CymaticGeometr
             vec3 color = vec3(0.2, 0.4, 0.8);
             
             if (isPlaying > 0.5) {
-              // Frequency-based coloring
+              // Frequency-based coloring with more vibrant colors
               float pattern = sin(vPosition.x * 5.0 + time) * 
                              cos(vPosition.y * 5.0 + time) * 
                              sin(vPosition.z * 5.0 + time);
               
+              // Map different frequencies to different hues
+              float hue1 = freq1 * 2.0;
+              float hue2 = freq2 * 2.0;
+              
               color = vec3(
-                0.3 + pattern * 0.3 + biofeedback * 0.2,
-                0.5 + pattern * 0.2,
-                0.8 + pattern * 0.1
+                0.4 + pattern * 0.3 + sin(hue1 + time) * 0.2,
+                0.5 + pattern * 0.2 + cos(hue2 + time) * 0.2,
+                0.9 + pattern * 0.1
               );
+              
+              color += biofeedback * 0.15;
             }
             
-            // Fresnel effect
-            float fresnel = pow(1.0 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
-            color += vec3(fresnel * 0.3);
+            // Fresnel effect for edge glow
+            vec3 viewDir = normalize(cameraPosition - vPosition);
+            float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), 2.5);
+            color += vec3(fresnel * 0.4, fresnel * 0.3, fresnel * 0.5);
             
             gl_FragColor = vec4(color, 0.9);
           }
@@ -89,27 +114,30 @@ const CymaticGeometry = ({ frequencies, isPlaying, biofeedback }: CymaticGeometr
         transparent: true,
         side: THREE.DoubleSide,
       }),
-    []
+    [safeFrequencies, biofeedback, isPlaying]
   );
 
-  useFrame((state) => {
-    if (!meshRef.current || !materialRef.current) return;
+  useFrame((state, delta) => {
+    if (!meshRef.current) return;
 
-    timeRef.current += 0.01;
-    materialRef.current.uniforms.time.value = timeRef.current;
-    materialRef.current.uniforms.frequencies.value = frequencies.map(f => f / 1000);
-    materialRef.current.uniforms.biofeedback.value = biofeedback;
-    materialRef.current.uniforms.isPlaying.value = isPlaying ? 1.0 : 0.0;
+    timeRef.current += delta;
+    shaderMaterial.uniforms.time.value = timeRef.current;
+    shaderMaterial.uniforms.freq1.value = safeFrequencies[0] / 1000;
+    shaderMaterial.uniforms.freq2.value = safeFrequencies[1] / 1000;
+    shaderMaterial.uniforms.freq3.value = safeFrequencies[2] / 1000;
+    shaderMaterial.uniforms.freq4.value = safeFrequencies[3] / 1000;
+    shaderMaterial.uniforms.biofeedback.value = biofeedback;
+    shaderMaterial.uniforms.isPlaying.value = isPlaying ? 1.0 : 0.0;
 
     if (isPlaying) {
-      meshRef.current.rotation.y += 0.005;
-      meshRef.current.rotation.x += 0.002;
+      meshRef.current.rotation.y += delta * 0.3;
+      meshRef.current.rotation.x += delta * 0.15;
     }
   });
 
   return (
     <mesh ref={meshRef} material={shaderMaterial}>
-      <icosahedronGeometry args={[1.5, 4]} />
+      <icosahedronGeometry args={[1.5, 5]} />
     </mesh>
   );
 };
