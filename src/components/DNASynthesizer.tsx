@@ -357,7 +357,7 @@ export const DNASynthesizer = () => {
         {/* Organism Selector with Categories */}
         <OrganismCategories
           organisms={[
-            { name: "Human", sequence: "ATCGATCGATCGATCG", description: "Homo sapiens — complex, adaptive, conscious", icon: "👤" },
+            { name: "Human", sequence: "ATCGATCGATCGATCG", description: "Homo sapiens — complex, adaptive, conscious", icon: "👨🏿" },
             { name: "Coral", sequence: "GCTAGCTAGCTAGCTA", description: "Ancient reef builder — symbiotic, regenerative", icon: "🪸" },
             { name: "Tardigrade", sequence: "CGCGATATCGCGATAT", description: "Water bear — indestructible, extremophile", icon: "🐻" },
             { name: "Mycelium", sequence: "TATACGCGATATATAT", description: "Fungal network — communicative, earth-binding", icon: "🍄" },
