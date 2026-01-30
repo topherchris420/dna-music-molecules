@@ -16,6 +16,7 @@ import { CymaticScene } from "./CymaticScene";
 import { BottomSheet } from "./BottomSheet";
 import { HarmonyExplorer, getKeyMultiplier } from "./HarmonyExplorer";
 import { ScientificMode } from "./ScientificMode";
+import { AdaptiveCompositionMode } from "./AdaptiveCompositionMode";
 
 // DNA base frequencies mapped to F# scale with distinct tonal separation
 // Based on Susan Alexjander's work, adjusted for clear melodic distinction
@@ -331,6 +332,12 @@ export const DNASynthesizer = () => {
             )}
           </div>
         </Card>
+
+        {/* Adaptive Composition Mode */}
+        <AdaptiveCompositionMode
+          onSequenceGenerated={handleOrganismSelect}
+          isPlaying={isPlaying}
+        />
 
         {/* Advanced Features - Desktop view */}
         <div className="hidden md:grid md:grid-cols-2 gap-4 sm:gap-6">
