@@ -66,42 +66,48 @@ export const DNASynthesizer = () => {
   const sequenceRef = useRef<Tone.Sequence | null>(null);
 
   useEffect(() => {
-    // Crumar GDS-inspired signal chain
-    // The GDS was known for crystalline additive synthesis with bell-like,
-    // bright digital tones — pioneered by Hal Alles at Bell Labs (~1980)
-    const reverb = new Tone.Reverb({ decay: 5, wet: 0.35 }).toDestination();
-    const chorus = new Tone.Chorus({ frequency: 0.8, delayTime: 3.5, depth: 0.25, wet: 0.2 }).connect(reverb);
-    const delay = new Tone.FeedbackDelay("8n.", 0.2).connect(chorus);
+    // Crumar GDS (General Development System, ~1980) — signal chain
+    // 32 sine/triangle digital oscillators, 128-band fixed filter bank,
+    // 16-stage envelopes. Pioneered by Hal Alles at Bell Labs.
+    // Iconic on Wendy Carlos' TRON soundtrack.
 
-    // FMSynth approximates the GDS's additive/inharmonic partials:
-    // bright attack, glassy sustain, shimmering metallic overtones
+    const reverb = new Tone.Reverb({ decay: 4.5, wet: 0.3 }).toDestination();
+    // Subtle chorus emulates the GDS's slight inter-partial detuning
+    const chorus = new Tone.Chorus({ frequency: 0.5, delayTime: 2.8, depth: 0.15, wet: 0.15 }).connect(reverb);
+    // EQ3 simulates the GDS's 128-band fixed filter bank — bright top-end presence
+    const eq = new Tone.EQ3({ low: -2, mid: 0, high: 4 }).connect(chorus);
+    const delay = new Tone.FeedbackDelay("8n.", 0.15).connect(eq);
+
+    // FM synthesis approximating GDS additive partials:
+    // The GDS used sine + triangle waves with independent frequency envelopes
+    // per partial, creating characteristic bell/crystalline timbres
     synthRef.current = new Tone.PolySynth(Tone.FMSynth, {
-      harmonicity: 3.01,        // slightly detuned harmonic ratio → bell-like inharmonicity
-      modulationIndex: 12,      // rich spectral content, classic GDS brightness
+      harmonicity: 3.56,          // bell-tone ratio — inharmonic partials like tubular bells
+      modulationIndex: 8,         // refined spectral richness without harshness
       oscillator: { type: "sine" },
-      modulation: { type: "square" },  // adds digital edge / crystalline bite
+      modulation: { type: "triangle" },  // authentic to GDS's sine/triangle oscillators
       envelope: {
-        attack: 0.005,          // fast, percussive attack (GDS characteristic)
-        decay: 0.8,
-        sustain: 0.15,
-        release: 2.0,           // long glassy tail
+        attack: 0.002,            // near-instant attack — GDS's digital precision
+        decay: 1.0,               // gradual decay reveals spectral evolution
+        sustain: 0.08,            // low sustain — tones bloom then thin (GDS signature)
+        release: 2.8,             // long crystalline tail
       },
       modulationEnvelope: {
-        attack: 0.01,
-        decay: 0.4,
-        sustain: 0.1,
-        release: 1.5,           // modulation fades → tone mellows over time
+        attack: 0.005,
+        decay: 0.35,              // fast mod decay → harmonics brighten then mellow
+        sustain: 0.04,            // minimal sustained modulation — pure tone emerges
+        release: 1.8,             // modulation fades independently of carrier
       },
     }).connect(delay);
 
-    // Lower overall volume to prevent clipping with richer harmonics
-    synthRef.current.volume.value = -8;
+    synthRef.current.volume.value = -6;
 
     return () => {
       sequenceRef.current?.dispose();
       synthRef.current?.dispose();
       reverb.dispose();
       chorus.dispose();
+      eq.dispose();
       delay.dispose();
     };
   }, []);
