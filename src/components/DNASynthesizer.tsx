@@ -66,24 +66,42 @@ export const DNASynthesizer = () => {
   const sequenceRef = useRef<Tone.Sequence | null>(null);
 
   useEffect(() => {
-    // Initialize synth with reverb and delay for ethereal sound
-    const reverb = new Tone.Reverb({ decay: 4, wet: 0.4 }).toDestination();
-    const delay = new Tone.FeedbackDelay("8n", 0.3).connect(reverb);
-    
-    synthRef.current = new Tone.PolySynth(Tone.Synth, {
+    // Crumar GDS-inspired signal chain
+    // The GDS was known for crystalline additive synthesis with bell-like,
+    // bright digital tones — pioneered by Hal Alles at Bell Labs (~1980)
+    const reverb = new Tone.Reverb({ decay: 5, wet: 0.35 }).toDestination();
+    const chorus = new Tone.Chorus({ frequency: 0.8, delayTime: 3.5, depth: 0.25, wet: 0.2 }).connect(reverb);
+    const delay = new Tone.FeedbackDelay("8n.", 0.2).connect(chorus);
+
+    // FMSynth approximates the GDS's additive/inharmonic partials:
+    // bright attack, glassy sustain, shimmering metallic overtones
+    synthRef.current = new Tone.PolySynth(Tone.FMSynth, {
+      harmonicity: 3.01,        // slightly detuned harmonic ratio → bell-like inharmonicity
+      modulationIndex: 12,      // rich spectral content, classic GDS brightness
       oscillator: { type: "sine" },
+      modulation: { type: "square" },  // adds digital edge / crystalline bite
       envelope: {
-        attack: 0.1,
-        decay: 0.3,
-        sustain: 0.4,
-        release: 1.2,
+        attack: 0.005,          // fast, percussive attack (GDS characteristic)
+        decay: 0.8,
+        sustain: 0.15,
+        release: 2.0,           // long glassy tail
+      },
+      modulationEnvelope: {
+        attack: 0.01,
+        decay: 0.4,
+        sustain: 0.1,
+        release: 1.5,           // modulation fades → tone mellows over time
       },
     }).connect(delay);
+
+    // Lower overall volume to prevent clipping with richer harmonics
+    synthRef.current.volume.value = -8;
 
     return () => {
       sequenceRef.current?.dispose();
       synthRef.current?.dispose();
       reverb.dispose();
+      chorus.dispose();
       delay.dispose();
     };
   }, []);
