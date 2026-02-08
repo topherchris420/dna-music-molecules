@@ -4,8 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FrequencyModulator } from "./FrequencyModulator";
 import { ResonanceField } from "./ResonanceField";
 import { WetwareCymaticScene } from "./WetwareCymaticScene";
+import { PhotophoneSimulator } from "./photophone/PhotophoneSimulator";
 import { Badge } from "@/components/ui/badge";
-import { Activity, Waves, Zap } from "lucide-react";
+import { Activity, Waves, Zap, Sun } from "lucide-react";
 
 export type EntrainmentMode = "focus" | "relaxation" | "coherence";
 
@@ -72,7 +73,7 @@ export const WetwareSimulator = () => {
 
         {/* Main Simulator */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-card/50">
+          <TabsList className="grid w-full grid-cols-4 bg-card/50">
             <TabsTrigger value="overview" className="gap-2">
               <Activity className="w-4 h-4" />
               Overview
@@ -84,6 +85,10 @@ export const WetwareSimulator = () => {
             <TabsTrigger value="bioelectric" className="gap-2">
               <Zap className="w-4 h-4" />
               Bioelectric Field
+            </TabsTrigger>
+            <TabsTrigger value="photophone" className="gap-2">
+              <Sun className="w-4 h-4" />
+              Photophone Lab
             </TabsTrigger>
           </TabsList>
 
@@ -195,6 +200,11 @@ export const WetwareSimulator = () => {
                 </div>
               </div>
             </Card>
+          </TabsContent>
+
+          {/* Photophone Lab Tab */}
+          <TabsContent value="photophone" className="space-y-6">
+            <PhotophoneSimulator />
           </TabsContent>
         </Tabs>
 

@@ -53,6 +53,12 @@ All colors MUST be HSL.
     --wetware-relaxation: 260 75% 65%;
     --wetware-coherence: 280 70% 70%;
     
+    /* Photophone Simulator Colors — Bell Labs Heritage */
+    --photophone-emitter: 38 92% 55%;
+    --photophone-beam: 45 100% 60%;
+    --photophone-receiver: 190 80% 55%;
+    --photophone-signal: 30 85% 60%;
+    
     /* Typography */
     --font-serif: 'Playfair Display', 'Georgia', serif;
     
