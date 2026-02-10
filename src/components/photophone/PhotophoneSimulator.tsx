@@ -15,9 +15,13 @@ import {
   Square,
   Info,
   Mic,
+  MicOff,
   Sun,
 } from "lucide-react";
 import * as Tone from "tone";
+import { toast } from "sonner";
+
+type AudioSource = "tone" | "mic";
 
 export const PhotophoneSimulator = () => {
   const [isActive, setIsActive] = useState(false);
@@ -28,24 +32,91 @@ export const PhotophoneSimulator = () => {
   const [distance, setDistance] = useState(5);
   const [historicalMode, setHistoricalMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioSource, setAudioSource] = useState<AudioSource>("tone");
+  const [micActive, setMicActive] = useState(false);
 
   const oscillatorRef = useRef<Tone.Oscillator | null>(null);
+
+  // Mic refs
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const micContextRef = useRef<AudioContext | null>(null);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
+  const micAmplitudeRef = useRef(0);
+  const micRafRef = useRef<number | null>(null);
+
+  // Continuously sample mic amplitude into a ref
+  const updateMicAmplitude = useCallback(() => {
+    if (!micAnalyserRef.current) return;
+    const data = new Uint8Array(micAnalyserRef.current.fftSize);
+    micAnalyserRef.current.getByteTimeDomainData(data);
+    // RMS amplitude normalised to 0-1
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = (data[i] - 128) / 128;
+      sum += v * v;
+    }
+    micAmplitudeRef.current = Math.sqrt(sum / data.length) * 3; // boost for visibility
+    micRafRef.current = requestAnimationFrame(updateMicAmplitude);
+  }, []);
+
+  const startMic = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.3;
+      source.connect(analyser);
+
+      micStreamRef.current = stream;
+      micContextRef.current = ctx;
+      micAnalyserRef.current = analyser;
+      setMicActive(true);
+      setIsActive(true);
+      setAudioSource("mic");
+      updateMicAmplitude();
+      toast.success("Microphone active — speak to modulate the light beam");
+    } catch (err) {
+      toast.error("Microphone access denied");
+    }
+  }, [updateMicAmplitude]);
+
+  const stopMic = useCallback(() => {
+    if (micRafRef.current) cancelAnimationFrame(micRafRef.current);
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micContextRef.current?.close();
+    micStreamRef.current = null;
+    micContextRef.current = null;
+    micAnalyserRef.current = null;
+    micAmplitudeRef.current = 0;
+    setMicActive(false);
+    if (audioSource === "mic") setAudioSource("tone");
+  }, [audioSource]);
 
   // ----- Signal math -----
   const audioSignal = useCallback(
     (t: number) => {
       if (!isActive) return 0;
+      if (audioSource === "mic") {
+        // Use live mic amplitude to drive a pseudo-waveform for visualisation
+        const mic = micAmplitudeRef.current;
+        return mic * Math.sin(2 * Math.PI * 220 * t); // carrier for visual only
+      }
       return amplitude * Math.sin(2 * Math.PI * frequency * t);
     },
-    [frequency, amplitude, isActive]
+    [frequency, amplitude, isActive, audioSource]
   );
 
   const modulatedLightSignal = useCallback(
     (t: number) => {
       if (!isActive) return 0;
-      const audio = audioSignal(t);
+      const audio = audioSource === "mic"
+        ? micAmplitudeRef.current * Math.sin(2 * Math.PI * 220 * t)
+        : amplitude * Math.sin(2 * Math.PI * frequency * t);
       const attenuation = 1 / (1 + distance * 0.015);
-      // Deterministic pseudo-noise
       const noiseVal =
         noise *
         (Math.sin(t * 1337.7) * 0.5 +
@@ -53,7 +124,7 @@ export const PhotophoneSimulator = () => {
           Math.sin(t * 4519.1) * 0.2);
       return (lightIntensity * (1 + audio) / 2) * attenuation + noiseVal;
     },
-    [audioSignal, lightIntensity, distance, noise, isActive]
+    [amplitude, frequency, lightIntensity, distance, noise, isActive, audioSource]
   );
 
   const reconstructedSignal = useCallback(
@@ -83,6 +154,7 @@ export const PhotophoneSimulator = () => {
       oscillatorRef.current = osc;
       setIsPlaying(true);
       setIsActive(true);
+      setAudioSource("tone");
     }
   };
 
@@ -96,9 +168,9 @@ export const PhotophoneSimulator = () => {
     return () => {
       oscillatorRef.current?.stop();
       oscillatorRef.current?.dispose();
+      stopMic();
     };
   }, []);
-
   const emitterColor = "hsl(var(--photophone-emitter))";
   const beamColor = "hsl(var(--photophone-beam))";
   const receiverColor = "hsl(var(--photophone-receiver))";
@@ -280,47 +352,99 @@ export const PhotophoneSimulator = () => {
             Audio Source
           </h4>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Frequency</span>
-              <span className="font-mono">{frequency} Hz</span>
-            </div>
-            <Slider
-              value={[frequency]}
-              onValueChange={([v]) => setFrequency(v)}
-              min={60}
-              max={2000}
-              step={1}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Amplitude</span>
-              <span className="font-mono">{(amplitude * 100).toFixed(0)}%</span>
-            </div>
-            <Slider
-              value={[amplitude]}
-              onValueChange={([v]) => setAmplitude(v)}
-              min={0}
-              max={1}
-              step={0.01}
-            />
-          </div>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={togglePlay}
-            className="gap-2 w-full"
-          >
-            {isPlaying ? (
-              <Square className="w-3 h-3" />
-            ) : (
+          {/* Source toggle: Tone vs Mic */}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={audioSource === "tone" ? "default" : "outline"}
+              onClick={() => {
+                if (micActive) stopMic();
+                setAudioSource("tone");
+              }}
+              className="flex-1 gap-1.5"
+            >
               <Volume2 className="w-3 h-3" />
-            )}
-            {isPlaying ? "Stop Audio" : "Play Source Tone"}
-          </Button>
+              Tone
+            </Button>
+            <Button
+              size="sm"
+              variant={audioSource === "mic" ? "default" : "outline"}
+              onClick={() => {
+                if (micActive) {
+                  stopMic();
+                } else {
+                  if (isPlaying) {
+                    oscillatorRef.current?.stop();
+                    oscillatorRef.current?.dispose();
+                    oscillatorRef.current = null;
+                    setIsPlaying(false);
+                  }
+                  startMic();
+                }
+              }}
+              className="flex-1 gap-1.5"
+            >
+              {micActive ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+              {micActive ? "Stop Mic" : "Microphone"}
+            </Button>
+          </div>
+
+          {/* Mic level indicator */}
+          {micActive && (
+            <div className="space-y-1 animate-fade-in">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse inline-block" />
+                Microphone live — speak to modulate the light beam
+              </p>
+            </div>
+          )}
+
+          {/* Tone controls (only when tone source) */}
+          {audioSource === "tone" && (
+            <>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Frequency</span>
+                  <span className="font-mono">{frequency} Hz</span>
+                </div>
+                <Slider
+                  value={[frequency]}
+                  onValueChange={([v]) => setFrequency(v)}
+                  min={60}
+                  max={2000}
+                  step={1}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Amplitude</span>
+                  <span className="font-mono">{(amplitude * 100).toFixed(0)}%</span>
+                </div>
+                <Slider
+                  value={[amplitude]}
+                  onValueChange={([v]) => setAmplitude(v)}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                />
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={togglePlay}
+                className="gap-2 w-full"
+              >
+                {isPlaying ? (
+                  <Square className="w-3 h-3" />
+                ) : (
+                  <Volume2 className="w-3 h-3" />
+                )}
+                {isPlaying ? "Stop Audio" : "Play Source Tone"}
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Light & Channel Controls */}
@@ -382,11 +506,16 @@ export const PhotophoneSimulator = () => {
           {isActive ? "Simulation Active" : "Simulation Idle"}
         </Badge>
         <Badge variant="outline" className="font-mono text-xs">
-          {frequency} Hz
+          {audioSource === "mic" ? "🎤 Microphone" : `${frequency} Hz`}
         </Badge>
         <Badge variant="outline" className="font-mono text-xs">
           {distance}m path
         </Badge>
+        {micActive && (
+          <Badge variant="default" className="text-xs gap-1">
+            <Mic className="w-3 h-3" /> Live
+          </Badge>
+        )}
         {noise > 0.15 && (
           <Badge variant="destructive" className="text-xs">
             High Noise
