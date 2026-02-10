@@ -352,47 +352,99 @@ export const PhotophoneSimulator = () => {
             Audio Source
           </h4>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Frequency</span>
-              <span className="font-mono">{frequency} Hz</span>
-            </div>
-            <Slider
-              value={[frequency]}
-              onValueChange={([v]) => setFrequency(v)}
-              min={60}
-              max={2000}
-              step={1}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Amplitude</span>
-              <span className="font-mono">{(amplitude * 100).toFixed(0)}%</span>
-            </div>
-            <Slider
-              value={[amplitude]}
-              onValueChange={([v]) => setAmplitude(v)}
-              min={0}
-              max={1}
-              step={0.01}
-            />
-          </div>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={togglePlay}
-            className="gap-2 w-full"
-          >
-            {isPlaying ? (
-              <Square className="w-3 h-3" />
-            ) : (
+          {/* Source toggle: Tone vs Mic */}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={audioSource === "tone" ? "default" : "outline"}
+              onClick={() => {
+                if (micActive) stopMic();
+                setAudioSource("tone");
+              }}
+              className="flex-1 gap-1.5"
+            >
               <Volume2 className="w-3 h-3" />
-            )}
-            {isPlaying ? "Stop Audio" : "Play Source Tone"}
-          </Button>
+              Tone
+            </Button>
+            <Button
+              size="sm"
+              variant={audioSource === "mic" ? "default" : "outline"}
+              onClick={() => {
+                if (micActive) {
+                  stopMic();
+                } else {
+                  if (isPlaying) {
+                    oscillatorRef.current?.stop();
+                    oscillatorRef.current?.dispose();
+                    oscillatorRef.current = null;
+                    setIsPlaying(false);
+                  }
+                  startMic();
+                }
+              }}
+              className="flex-1 gap-1.5"
+            >
+              {micActive ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
+              {micActive ? "Stop Mic" : "Microphone"}
+            </Button>
+          </div>
+
+          {/* Mic level indicator */}
+          {micActive && (
+            <div className="space-y-1 animate-fade-in">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
+                Microphone live — speak to modulate the light beam
+              </p>
+            </div>
+          )}
+
+          {/* Tone controls (only when tone source) */}
+          {audioSource === "tone" && (
+            <>
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Frequency</span>
+                  <span className="font-mono">{frequency} Hz</span>
+                </div>
+                <Slider
+                  value={[frequency]}
+                  onValueChange={([v]) => setFrequency(v)}
+                  min={60}
+                  max={2000}
+                  step={1}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Amplitude</span>
+                  <span className="font-mono">{(amplitude * 100).toFixed(0)}%</span>
+                </div>
+                <Slider
+                  value={[amplitude]}
+                  onValueChange={([v]) => setAmplitude(v)}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                />
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={togglePlay}
+                className="gap-2 w-full"
+              >
+                {isPlaying ? (
+                  <Square className="w-3 h-3" />
+                ) : (
+                  <Volume2 className="w-3 h-3" />
+                )}
+                {isPlaying ? "Stop Audio" : "Play Source Tone"}
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Light & Channel Controls */}
