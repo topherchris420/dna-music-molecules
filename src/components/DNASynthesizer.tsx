@@ -173,7 +173,7 @@ export const DNASynthesizer = () => {
       ? "Listening to DNA evolving in real-time..." 
       : "Listening to the song of DNA..."
     );
-  }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled]);
+  }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled, keyMultiplier]);
 
   const stopSequence = () => {
     Tone.Transport.stop();
