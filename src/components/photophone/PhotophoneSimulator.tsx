@@ -506,11 +506,16 @@ export const PhotophoneSimulator = () => {
           {isActive ? "Simulation Active" : "Simulation Idle"}
         </Badge>
         <Badge variant="outline" className="font-mono text-xs">
-          {frequency} Hz
+          {audioSource === "mic" ? "🎤 Microphone" : `${frequency} Hz`}
         </Badge>
         <Badge variant="outline" className="font-mono text-xs">
           {distance}m path
         </Badge>
+        {micActive && (
+          <Badge variant="default" className="text-xs gap-1">
+            <Mic className="w-3 h-3" /> Live
+          </Badge>
+        )}
         {noise > 0.15 && (
           <Badge variant="destructive" className="text-xs">
             High Noise
