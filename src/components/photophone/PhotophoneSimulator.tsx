@@ -393,7 +393,7 @@ export const PhotophoneSimulator = () => {
           {micActive && (
             <div className="space-y-1 animate-fade-in">
               <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse inline-block" />
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse inline-block" />
                 Microphone live — speak to modulate the light beam
               </p>
             </div>
