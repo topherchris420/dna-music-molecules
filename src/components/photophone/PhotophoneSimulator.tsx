@@ -15,9 +15,13 @@ import {
   Square,
   Info,
   Mic,
+  MicOff,
   Sun,
 } from "lucide-react";
 import * as Tone from "tone";
+import { toast } from "sonner";
+
+type AudioSource = "tone" | "mic";
 
 export const PhotophoneSimulator = () => {
   const [isActive, setIsActive] = useState(false);
@@ -28,24 +32,91 @@ export const PhotophoneSimulator = () => {
   const [distance, setDistance] = useState(5);
   const [historicalMode, setHistoricalMode] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioSource, setAudioSource] = useState<AudioSource>("tone");
+  const [micActive, setMicActive] = useState(false);
 
   const oscillatorRef = useRef<Tone.Oscillator | null>(null);
+
+  // Mic refs
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const micContextRef = useRef<AudioContext | null>(null);
+  const micAnalyserRef = useRef<AnalyserNode | null>(null);
+  const micAmplitudeRef = useRef(0);
+  const micRafRef = useRef<number | null>(null);
+
+  // Continuously sample mic amplitude into a ref
+  const updateMicAmplitude = useCallback(() => {
+    if (!micAnalyserRef.current) return;
+    const data = new Uint8Array(micAnalyserRef.current.fftSize);
+    micAnalyserRef.current.getByteTimeDomainData(data);
+    // RMS amplitude normalised to 0-1
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      const v = (data[i] - 128) / 128;
+      sum += v * v;
+    }
+    micAmplitudeRef.current = Math.sqrt(sum / data.length) * 3; // boost for visibility
+    micRafRef.current = requestAnimationFrame(updateMicAmplitude);
+  }, []);
+
+  const startMic = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      const ctx = new AudioContext();
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.3;
+      source.connect(analyser);
+
+      micStreamRef.current = stream;
+      micContextRef.current = ctx;
+      micAnalyserRef.current = analyser;
+      setMicActive(true);
+      setIsActive(true);
+      setAudioSource("mic");
+      updateMicAmplitude();
+      toast.success("Microphone active — speak to modulate the light beam");
+    } catch (err) {
+      toast.error("Microphone access denied");
+    }
+  }, [updateMicAmplitude]);
+
+  const stopMic = useCallback(() => {
+    if (micRafRef.current) cancelAnimationFrame(micRafRef.current);
+    micStreamRef.current?.getTracks().forEach((t) => t.stop());
+    micContextRef.current?.close();
+    micStreamRef.current = null;
+    micContextRef.current = null;
+    micAnalyserRef.current = null;
+    micAmplitudeRef.current = 0;
+    setMicActive(false);
+    if (audioSource === "mic") setAudioSource("tone");
+  }, [audioSource]);
 
   // ----- Signal math -----
   const audioSignal = useCallback(
     (t: number) => {
       if (!isActive) return 0;
+      if (audioSource === "mic") {
+        // Use live mic amplitude to drive a pseudo-waveform for visualisation
+        const mic = micAmplitudeRef.current;
+        return mic * Math.sin(2 * Math.PI * 220 * t); // carrier for visual only
+      }
       return amplitude * Math.sin(2 * Math.PI * frequency * t);
     },
-    [frequency, amplitude, isActive]
+    [frequency, amplitude, isActive, audioSource]
   );
 
   const modulatedLightSignal = useCallback(
     (t: number) => {
       if (!isActive) return 0;
-      const audio = audioSignal(t);
+      const audio = audioSource === "mic"
+        ? micAmplitudeRef.current * Math.sin(2 * Math.PI * 220 * t)
+        : amplitude * Math.sin(2 * Math.PI * frequency * t);
       const attenuation = 1 / (1 + distance * 0.015);
-      // Deterministic pseudo-noise
       const noiseVal =
         noise *
         (Math.sin(t * 1337.7) * 0.5 +
@@ -53,7 +124,7 @@ export const PhotophoneSimulator = () => {
           Math.sin(t * 4519.1) * 0.2);
       return (lightIntensity * (1 + audio) / 2) * attenuation + noiseVal;
     },
-    [audioSignal, lightIntensity, distance, noise, isActive]
+    [amplitude, frequency, lightIntensity, distance, noise, isActive, audioSource]
   );
 
   const reconstructedSignal = useCallback(
@@ -83,6 +154,7 @@ export const PhotophoneSimulator = () => {
       oscillatorRef.current = osc;
       setIsPlaying(true);
       setIsActive(true);
+      setAudioSource("tone");
     }
   };
 
@@ -96,9 +168,9 @@ export const PhotophoneSimulator = () => {
     return () => {
       oscillatorRef.current?.stop();
       oscillatorRef.current?.dispose();
+      stopMic();
     };
   }, []);
-
   const emitterColor = "hsl(var(--photophone-emitter))";
   const beamColor = "hsl(var(--photophone-beam))";
   const receiverColor = "hsl(var(--photophone-receiver))";
