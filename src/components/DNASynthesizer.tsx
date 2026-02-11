@@ -218,34 +218,31 @@ export const DNASynthesizer = () => {
     .map(base => DNA_FREQUENCIES[base as keyof typeof DNA_FREQUENCIES]);
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-8 pb-32 md:pb-8">
-      <div className="max-w-6xl mx-auto space-y-8 sm:space-y-12 animate-fade-in">
+    <div className="min-h-screen bg-background p-3 sm:p-4 md:p-8 pb-28 md:pb-8">
+      <div className="max-w-6xl mx-auto space-y-6 sm:space-y-10 animate-fade-in">
         {/* Header */}
-        <div className="text-center space-y-4 sm:space-y-6 pt-4 sm:pt-12">
-          <p className="text-xs sm:text-sm text-muted-foreground tracking-wider uppercase">
+        <div className="text-center space-y-3 sm:space-y-5 pt-3 sm:pt-10">
+          <p className="text-[10px] sm:text-sm text-muted-foreground tracking-wider uppercase">
             Molecular Music Synthesizer
           </p>
-          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif leading-tight">
+          <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-serif leading-tight">
             <span className="font-normal text-foreground">R.A.I.N. Lab</span>
             <br />
             <span className="italic text-foreground">DNA is F♯</span>
           </h1>
-          <p className="text-sm sm:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4">
+          <p className="text-xs sm:text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed px-4">
             Experience evolution, quantum harmonics, and cymatic geometry in real time.
-            <br className="hidden sm:block" />
-            Everything is included: synthesis, biofeedback, visualization, and education.
           </p>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            {organismName !== "Custom" && (
-              <span className="text-primary font-medium">{organismName} • </span>
-            )}
-            Listen to the song your molecules have been humming since life began.
-          </p>
+          {organismName !== "Custom" && (
+            <p className="text-xs text-primary font-medium">
+              ♪ {organismName}
+            </p>
+          )}
         </div>
 
         {/* Main Card */}
-        <Card className="p-4 sm:p-6 md:p-8 bg-card/40 backdrop-blur-sm border-border/50">
-          <div className="space-y-4 sm:space-y-6">
+        <Card className="p-3 sm:p-5 md:p-8 bg-card/40 backdrop-blur-sm border-border/50">
+          <div className="space-y-4 sm:space-y-5">
             {/* Sequence Input */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-muted-foreground">
