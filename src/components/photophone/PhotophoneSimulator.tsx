@@ -36,8 +36,6 @@ export const PhotophoneSimulator = () => {
   const [micActive, setMicActive] = useState(false);
 
   const oscillatorRef = useRef<Tone.Oscillator | null>(null);
-
-  // Mic refs
   const micStreamRef = useRef<MediaStream | null>(null);
   const micContextRef = useRef<AudioContext | null>(null);
   const micAnalyserRef = useRef<AnalyserNode | null>(null);
@@ -49,13 +47,12 @@ export const PhotophoneSimulator = () => {
     if (!micAnalyserRef.current) return;
     const data = new Uint8Array(micAnalyserRef.current.fftSize);
     micAnalyserRef.current.getByteTimeDomainData(data);
-    // RMS amplitude normalised to 0-1
     let sum = 0;
     for (let i = 0; i < data.length; i++) {
       const v = (data[i] - 128) / 128;
       sum += v * v;
     }
-    micAmplitudeRef.current = Math.sqrt(sum / data.length) * 3; // boost for visibility
+    micAmplitudeRef.current = Math.sqrt(sum / data.length) * 3;
     micRafRef.current = requestAnimationFrame(updateMicAmplitude);
   }, []);
 
@@ -96,14 +93,12 @@ export const PhotophoneSimulator = () => {
     if (audioSource === "mic") setAudioSource("tone");
   }, [audioSource]);
 
-  // ----- Signal math -----
   const audioSignal = useCallback(
     (t: number) => {
       if (!isActive) return 0;
       if (audioSource === "mic") {
-        // Use live mic amplitude to drive a pseudo-waveform for visualisation
         const mic = micAmplitudeRef.current;
-        return mic * Math.sin(2 * Math.PI * 220 * t); // carrier for visual only
+        return mic * Math.sin(2 * Math.PI * 220 * t);
       }
       return amplitude * Math.sin(2 * Math.PI * frequency * t);
     },
@@ -139,7 +134,6 @@ export const PhotophoneSimulator = () => {
     [modulatedLightSignal, lightIntensity, distance, isActive]
   );
 
-  // ----- Tone.js audio playback -----
   const togglePlay = async () => {
     if (isPlaying) {
       oscillatorRef.current?.stop();
@@ -171,71 +165,63 @@ export const PhotophoneSimulator = () => {
       stopMic();
     };
   }, []);
+
   const emitterColor = "hsl(var(--photophone-emitter))";
   const beamColor = "hsl(var(--photophone-beam))";
   const receiverColor = "hsl(var(--photophone-receiver))";
 
   return (
-    <Card className="p-6 bg-card/60 border-border/40 space-y-6">
+    <Card className="p-3 sm:p-4 md:p-6 bg-card/60 border-border/40 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col gap-3">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Sun className="w-5 h-5" style={{ color: beamColor }} />
-            <h3 className="text-xl font-serif" style={{ color: beamColor }}>
-              Bell Labs Photophone Simulator
+            <Sun className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: beamColor }} />
+            <h3 className="text-lg sm:text-xl font-serif" style={{ color: beamColor }}>
+              Photophone Simulator
             </h3>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Based on Henry Feinberg's 1978 demonstration — sound transmitted via light
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
+            Based on Henry Feinberg's 1978 demonstration — sound via light
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Label
-            htmlFor="historical"
-            className="text-xs text-muted-foreground"
-          >
-            Historical Mode
-          </Label>
-          <Switch
-            id="historical"
-            checked={historicalMode}
-            onCheckedChange={setHistoricalMode}
-          />
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="historical" className="text-[10px] sm:text-xs text-muted-foreground">
+              Historical
+            </Label>
+            <Switch
+              id="historical"
+              checked={historicalMode}
+              onCheckedChange={setHistoricalMode}
+            />
+          </div>
           <Button
             size="sm"
             variant={isActive ? "default" : "outline"}
             onClick={() => setIsActive(!isActive)}
-            className="gap-1"
+            className="gap-1 h-8 sm:h-9 text-xs sm:text-sm"
           >
-            {isActive ? (
-              <Square className="w-3 h-3" />
-            ) : (
-              <Play className="w-3 h-3" />
-            )}
+            {isActive ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
             {isActive ? "Stop" : "Start"}
           </Button>
         </div>
       </div>
 
-      {/* Historical annotation banner */}
+      {/* Historical annotation */}
       {historicalMode && (
-        <div className="bg-secondary/50 rounded-lg p-3 border border-border/30 flex items-start gap-2 text-xs text-muted-foreground animate-fade-in">
-          <Info className="w-4 h-4 mt-0.5 shrink-0" style={{ color: beamColor }} />
+        <div className="bg-secondary/50 rounded-lg p-2.5 sm:p-3 border border-border/30 flex items-start gap-2 text-[10px] sm:text-xs text-muted-foreground animate-fade-in">
+          <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 mt-0.5 shrink-0" style={{ color: beamColor }} />
           <p>
             <strong className="text-foreground">Photophone (1880):</strong>{" "}
-            Alexander Graham Bell invented the photophone, which transmitted
-            speech on a beam of sunlight. In 1978, Henry Feinberg at Bell Labs
-            demonstrated this principle using modern optics — a voice signal
-            modulates a light beam's intensity, which is then decoded by a
-            photodetector back into audible sound.
+            Alexander Graham Bell invented the photophone, transmitting speech on a beam of sunlight. In 1978, Henry Feinberg at Bell Labs demonstrated this using modern optics.
           </p>
         </div>
       )}
 
-      {/* Transmission Path */}
-      <div className="grid grid-cols-[100px_1fr_100px] md:grid-cols-[130px_1fr_130px] gap-2 items-center">
-        {/* Transmitter */}
+      {/* Transmission Path — stacks vertically on mobile */}
+      <div className="hidden sm:grid grid-cols-[130px_1fr_130px] gap-2 items-center">
+        {/* Desktop layout: horizontal */}
         <div className="text-center space-y-2">
           <div
             className="w-14 h-14 md:w-16 md:h-16 mx-auto rounded-full flex items-center justify-center border"
@@ -244,7 +230,7 @@ export const PhotophoneSimulator = () => {
               borderColor: `hsl(var(--photophone-emitter) / 0.3)`,
             }}
           >
-            <Volume2 className="w-7 h-7" style={{ color: emitterColor }} />
+            <Volume2 className="w-6 h-6 sm:w-7 sm:h-7" style={{ color: emitterColor }} />
           </div>
           <div>
             <p className="text-xs font-medium text-foreground">Sound Source</p>
@@ -257,7 +243,6 @@ export const PhotophoneSimulator = () => {
           )}
         </div>
 
-        {/* Light Beam */}
         <div className="space-y-1">
           <LightBeam
             signalFn={modulatedLightSignal}
@@ -267,12 +252,11 @@ export const PhotophoneSimulator = () => {
           />
           {historicalMode && (
             <p className="text-[10px] text-center text-muted-foreground animate-fade-in">
-              Amplitude-modulated light travels through free space — intensity encodes the audio waveform
+              AM-encoded light travels through free space
             </p>
           )}
         </div>
 
-        {/* Receiver */}
         <div className="text-center space-y-2">
           <div
             className="w-14 h-14 md:w-16 md:h-16 mx-auto rounded-full flex items-center justify-center border"
@@ -281,7 +265,7 @@ export const PhotophoneSimulator = () => {
               borderColor: `hsl(var(--photophone-receiver) / 0.3)`,
             }}
           >
-            <Radio className="w-7 h-7" style={{ color: receiverColor }} />
+            <Radio className="w-6 h-6 sm:w-7 sm:h-7" style={{ color: receiverColor }} />
           </div>
           <div>
             <p className="text-xs font-medium text-foreground">Photodetector</p>
@@ -289,14 +273,66 @@ export const PhotophoneSimulator = () => {
           </div>
           {historicalMode && (
             <p className="text-[10px] leading-tight animate-fade-in" style={{ color: receiverColor }}>
-              Selenium cell converts light variations into an electrical current, driving a speaker
+              Selenium cell converts light variations into electrical current
             </p>
           )}
         </div>
       </div>
 
+      {/* Mobile: vertical transmission path */}
+      <div className="flex sm:hidden flex-col items-center gap-3">
+        <div className="flex items-center gap-3 w-full">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center border shrink-0"
+            style={{
+              backgroundColor: `hsl(var(--photophone-emitter) / 0.1)`,
+              borderColor: `hsl(var(--photophone-emitter) / 0.3)`,
+            }}
+          >
+            <Volume2 className="w-5 h-5" style={{ color: emitterColor }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground">Sound Source + Emitter</p>
+            {historicalMode && (
+              <p className="text-[10px] leading-tight mt-0.5 animate-fade-in" style={{ color: emitterColor }}>
+                Diaphragm modulates light beam intensity
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="w-full">
+          <LightBeam
+            signalFn={modulatedLightSignal}
+            isActive={isActive}
+            distance={distance}
+            noise={noise}
+          />
+        </div>
+
+        <div className="flex items-center gap-3 w-full">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center border shrink-0"
+            style={{
+              backgroundColor: `hsl(var(--photophone-receiver) / 0.1)`,
+              borderColor: `hsl(var(--photophone-receiver) / 0.3)`,
+            }}
+          >
+            <Radio className="w-5 h-5" style={{ color: receiverColor }} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-foreground">Photodetector → Speaker</p>
+            {historicalMode && (
+              <p className="text-[10px] leading-tight mt-0.5 animate-fade-in" style={{ color: receiverColor }}>
+                Converts light variations into sound
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Waveform Displays */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
         <div className="space-y-1">
           <WaveformCanvas
             signalFn={audioSignal}
@@ -307,7 +343,7 @@ export const PhotophoneSimulator = () => {
           />
           {historicalMode && (
             <p className="text-[10px] text-muted-foreground text-center animate-fade-in">
-              The acoustic signal from a sound source (voice, tone generator)
+              Acoustic signal from source
             </p>
           )}
         </div>
@@ -322,7 +358,7 @@ export const PhotophoneSimulator = () => {
           />
           {historicalMode && (
             <p className="text-[10px] text-muted-foreground text-center animate-fade-in">
-              Light intensity varies with the audio — AM (amplitude modulation) encoding
+              AM light encoding
             </p>
           )}
         </div>
@@ -331,28 +367,27 @@ export const PhotophoneSimulator = () => {
           <WaveformCanvas
             signalFn={reconstructedSignal}
             color={receiverColor}
-            label="RECONSTRUCTED AUDIO"
-            sublabel={`SNR loss from ${distance}m + noise`}
+            label="RECONSTRUCTED"
+            sublabel={`SNR loss from ${distance}m`}
             isActive={isActive}
           />
           {historicalMode && (
             <p className="text-[10px] text-muted-foreground text-center animate-fade-in">
-              The photodetector recovers the original audio — compare with the source
+              Recovered audio — compare with source
             </p>
           )}
         </div>
       </div>
 
       {/* Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 pt-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 sm:gap-x-8 gap-y-4 pt-2">
         {/* Audio Controls */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium flex items-center gap-2" style={{ color: emitterColor }}>
-            <Mic className="w-3.5 h-3.5" />
+        <div className="space-y-3 sm:space-y-4">
+          <h4 className="text-xs sm:text-sm font-medium flex items-center gap-2" style={{ color: emitterColor }}>
+            <Mic className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             Audio Source
           </h4>
 
-          {/* Source toggle: Tone vs Mic */}
           <div className="flex gap-2">
             <Button
               size="sm"
@@ -361,7 +396,7 @@ export const PhotophoneSimulator = () => {
                 if (micActive) stopMic();
                 setAudioSource("tone");
               }}
-              className="flex-1 gap-1.5"
+              className="flex-1 gap-1.5 h-9 text-xs sm:text-sm"
             >
               <Volume2 className="w-3 h-3" />
               Tone
@@ -382,28 +417,26 @@ export const PhotophoneSimulator = () => {
                   startMic();
                 }
               }}
-              className="flex-1 gap-1.5"
+              className="flex-1 gap-1.5 h-9 text-xs sm:text-sm"
             >
               {micActive ? <MicOff className="w-3 h-3" /> : <Mic className="w-3 h-3" />}
-              {micActive ? "Stop Mic" : "Microphone"}
+              {micActive ? "Stop" : "Mic"}
             </Button>
           </div>
 
-          {/* Mic level indicator */}
           {micActive && (
             <div className="space-y-1 animate-fade-in">
               <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse inline-block" />
-                Microphone live — speak to modulate the light beam
+                Microphone live — speak to modulate
               </p>
             </div>
           )}
 
-          {/* Tone controls (only when tone source) */}
           {audioSource === "tone" && (
             <>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex justify-between text-[10px] sm:text-xs">
                   <span className="text-muted-foreground">Frequency</span>
                   <span className="font-mono">{frequency} Hz</span>
                 </div>
@@ -416,8 +449,8 @@ export const PhotophoneSimulator = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex justify-between text-[10px] sm:text-xs">
                   <span className="text-muted-foreground">Amplitude</span>
                   <span className="font-mono">{(amplitude * 100).toFixed(0)}%</span>
                 </div>
@@ -434,13 +467,9 @@ export const PhotophoneSimulator = () => {
                 size="sm"
                 variant="outline"
                 onClick={togglePlay}
-                className="gap-2 w-full"
+                className="gap-2 w-full h-9 text-xs sm:text-sm"
               >
-                {isPlaying ? (
-                  <Square className="w-3 h-3" />
-                ) : (
-                  <Volume2 className="w-3 h-3" />
-                )}
+                {isPlaying ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
                 {isPlaying ? "Stop Audio" : "Play Source Tone"}
               </Button>
             </>
@@ -448,18 +477,16 @@ export const PhotophoneSimulator = () => {
         </div>
 
         {/* Light & Channel Controls */}
-        <div className="space-y-4">
-          <h4 className="text-sm font-medium flex items-center gap-2" style={{ color: beamColor }}>
-            <Lightbulb className="w-3.5 h-3.5" />
+        <div className="space-y-3 sm:space-y-4">
+          <h4 className="text-xs sm:text-sm font-medium flex items-center gap-2" style={{ color: beamColor }}>
+            <Lightbulb className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             Light Channel
           </h4>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex justify-between text-[10px] sm:text-xs">
               <span className="text-muted-foreground">Light Intensity</span>
-              <span className="font-mono">
-                {(lightIntensity * 100).toFixed(0)}%
-              </span>
+              <span className="font-mono">{(lightIntensity * 100).toFixed(0)}%</span>
             </div>
             <Slider
               value={[lightIntensity]}
@@ -470,9 +497,9 @@ export const PhotophoneSimulator = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Noise / Interference</span>
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex justify-between text-[10px] sm:text-xs">
+              <span className="text-muted-foreground">Noise</span>
               <span className="font-mono">{(noise * 100).toFixed(0)}%</span>
             </div>
             <Slider
@@ -484,8 +511,8 @@ export const PhotophoneSimulator = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
+          <div className="space-y-1.5 sm:space-y-2">
+            <div className="flex justify-between text-[10px] sm:text-xs">
               <span className="text-muted-foreground">Distance</span>
               <span className="font-mono">{distance} m</span>
             </div>
@@ -501,23 +528,23 @@ export const PhotophoneSimulator = () => {
       </div>
 
       {/* Status badges */}
-      <div className="flex flex-wrap gap-2 pt-1">
-        <Badge variant={isActive ? "default" : "secondary"}>
-          {isActive ? "Simulation Active" : "Simulation Idle"}
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-1">
+        <Badge variant={isActive ? "default" : "secondary"} className="text-[10px] sm:text-xs">
+          {isActive ? "Active" : "Idle"}
         </Badge>
-        <Badge variant="outline" className="font-mono text-xs">
-          {audioSource === "mic" ? "🎤 Microphone" : `${frequency} Hz`}
+        <Badge variant="outline" className="font-mono text-[10px] sm:text-xs">
+          {audioSource === "mic" ? "🎤 Mic" : `${frequency} Hz`}
         </Badge>
-        <Badge variant="outline" className="font-mono text-xs">
-          {distance}m path
+        <Badge variant="outline" className="font-mono text-[10px] sm:text-xs">
+          {distance}m
         </Badge>
         {micActive && (
-          <Badge variant="default" className="text-xs gap-1">
-            <Mic className="w-3 h-3" /> Live
+          <Badge variant="default" className="text-[10px] sm:text-xs gap-1">
+            <Mic className="w-2.5 h-2.5" /> Live
           </Badge>
         )}
         {noise > 0.15 && (
-          <Badge variant="destructive" className="text-xs">
+          <Badge variant="destructive" className="text-[10px] sm:text-xs">
             High Noise
           </Badge>
         )}

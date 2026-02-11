@@ -53,18 +53,18 @@ export const FrequencyModulator = ({
   ];
 
   return (
-    <Card className="p-6 bg-card/50 space-y-6">
-      <div className="flex items-center justify-between">
+    <Card className="p-4 sm:p-6 bg-card/50 space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
         <div>
-          <h3 className="text-xl font-serif text-[hsl(var(--wetware-neural))]">
+          <h3 className="text-lg sm:text-xl font-serif text-[hsl(var(--wetware-neural))]">
             Frequency Modulation Layer
           </h3>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Real-time resonant modulation with cymatic visualization
           </p>
         </div>
         <Button
-          size="lg"
+          size="default"
           onClick={() => onToggle(!isActive)}
           className={
             isActive
