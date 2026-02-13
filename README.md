@@ -113,14 +113,6 @@ The app is fully optimized for mobile devices with:
 - Collapsible sections to maximize screen space
 - Responsive typography and spacing
 
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest new features
-- Submit pull requests
-- Share interesting DNA sequences
-
 ## 📄 License
 
 This project is open source and available under the MIT License.
