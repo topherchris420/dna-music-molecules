@@ -6,6 +6,7 @@ import { Dna, Brain } from "lucide-react";
 import { SplineScene } from "@/components/ui/splite";
 import { Spotlight } from "@/components/ui/spotlight";
 import { Card } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dna");
@@ -14,6 +15,9 @@ const Index = () => {
     <div className="min-h-screen">
       {/* Hero Section with Spline 3D + Spotlight */}
       <Card className="w-full border-0 rounded-none bg-background/50 relative overflow-hidden min-h-[500px] md:min-h-[600px]">
+        <div className="absolute top-4 right-4 z-20">
+          <ThemeToggle />
+        </div>
         <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="hsl(var(--primary) / 0.3)" />
         <div className="flex flex-col md:flex-row h-full min-h-[500px] md:min-h-[600px]">
           {/* Left content */}
