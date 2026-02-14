@@ -6,6 +6,7 @@ import { ResonanceField } from "./ResonanceField";
 import { WetwareCymaticScene } from "./WetwareCymaticScene";
 import { PhotophoneSimulator } from "./photophone/PhotophoneSimulator";
 import { Badge } from "@/components/ui/badge";
+import { BioelectricField } from "./BioelectricField";
 import { Activity, Waves, Zap, Sun } from "lucide-react";
 
 export type EntrainmentMode = "focus" | "relaxation" | "coherence";
@@ -197,12 +198,14 @@ export const WetwareSimulator = () => {
               <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                 Real-time bioelectric pattern visualization showing voltage dynamics and field interactions.
               </p>
-              <div className="h-48 sm:h-64 bg-background/50 rounded-lg border border-border flex items-center justify-center">
-                <div className="text-center space-y-2">
-                  <Zap className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-[hsl(var(--wetware-bioelectric))]/50" />
-                  <p className="text-xs sm:text-sm text-muted-foreground">Coming soon</p>
-                </div>
-              </div>
+              <BioelectricField
+                isActive={isActive}
+                baseFrequency={baseFrequency}
+                resonanceIntensity={resonanceIntensity}
+                modulationDepth={modulationDepth}
+                entrainmentMode={entrainmentMode}
+                bioelectricActivity={bioelectricActivity}
+              />
             </Card>
           </TabsContent>
 
