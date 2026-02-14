@@ -173,9 +173,19 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    transition: color 0.3s ease, background-color 0.3s ease;
+  }
+
   body {
     @apply bg-background text-foreground;
+    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
   }
+
+  *, *::before, *::after {
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
 
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 }
