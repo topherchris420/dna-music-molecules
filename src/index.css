@@ -1,3 +1,6 @@
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,42 +11,42 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 30% 7%;
-    --foreground: 210 20% 98%;
+    --background: 0 0% 96%;
+    --foreground: 0 0% 9%;
 
-    --card: 220 25% 10%;
-    --card-foreground: 210 20% 98%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 9%;
 
-    --popover: 220 30% 9%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 0 0% 89%;
+    --popover-foreground: 0 0% 9%;
 
-    --primary: 213 100% 60%;
-    --primary-foreground: 210 20% 98%;
+    --primary: 161 93% 30%;
+    --primary-foreground: 151 80% 95%;
 
-    --secondary: 220 20% 15%;
-    --secondary-foreground: 210 20% 98%;
+    --secondary: 0 0% 32%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 220 20% 20%;
-    --muted-foreground: 215 15% 60%;
+    --muted: 0 0% 63%;
+    --muted-foreground: 0 0% 9%;
 
-    --accent: 213 100% 60%;
-    --accent-foreground: 210 20% 98%;
+    --accent: 166 76% 96%;
+    --accent-foreground: 173 80% 40%;
 
-    --destructive: 0 70% 60%;
-    --destructive-foreground: 210 20% 98%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 85% 97%;
 
-    --border: 220 20% 20%;
-    --input: 220 20% 15%;
-    --ring: 213 100% 60%;
+    --border: 0 0% 83%;
+    --input: 0 0% 83%;
+    --ring: 161 93% 30%;
 
     --radius: 0.75rem;
-    
+
     /* DNA Base Colors */
     --dna-adenine: 180 100% 50%;
     --dna-thymine: 30 100% 55%;
     --dna-cytosine: 320 90% 60%;
     --dna-guanine: 120 80% 50%;
-    
+
     /* Wetware Simulator Colors - Vers3Dynamics Brand */
     --wetware-neural: 210 80% 65%;
     --wetware-bioelectric: 260 70% 70%;
@@ -52,42 +55,116 @@ All colors MUST be HSL.
     --wetware-focus: 200 85% 60%;
     --wetware-relaxation: 260 75% 65%;
     --wetware-coherence: 280 70% 70%;
-    
+
     /* Photophone Simulator Colors — Bell Labs Heritage */
     --photophone-emitter: 38 92% 55%;
     --photophone-beam: 45 100% 60%;
     --photophone-receiver: 190 80% 55%;
     --photophone-signal: 30 85% 60%;
-    
+
     /* Typography */
-    --font-serif: 'Playfair Display', 'Georgia', serif;
-    
+    --font-serif: 'Lora', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+
     /* Gradients */
     --gradient-subtle: linear-gradient(180deg, hsl(220 30% 7%) 0%, hsl(220 35% 9%) 100%);
-    
+
     /* Animations */
     --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-foreground: 0 0% 9%;
 
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 161 93% 30%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary-foreground: 151 80% 95%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent: 0 0% 32%;
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-accent-foreground: 0 0% 98%;
 
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 0 0% 83%;
 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 161 93% 30%;
+
+    --chart-1: 158 64% 51%;
+
+    --chart-2: 141 69% 58%;
+
+    --chart-3: 172 66% 50%;
+
+    --chart-4: 82 77% 55%;
+
+    --chart-5: 0 0% 45%;
+
+    --sidebar: 0 0% 98%;
+
+    --font-sans: 'Work Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+
+    --font-mono: 'Inconsolata', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+
+    --tracking-normal: 0em;
+
+    --spacing: 0.25rem;
   }
 
   .dark {
-    --background: 250 50% 6%;
-    --foreground: 250 20% 98%;
+    --background: 0 0% 9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 14%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 25%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 158 64% 51%;
+    --primary-foreground: 165 91% 9%;
+    --secondary: 0 0% 45%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 45%;
+    --muted-foreground: 0 0% 98%;
+    --accent: 178 84% 10%;
+    --accent-foreground: 172 66% 50%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 85% 97%;
+    --border: 0 0% 32%;
+    --input: 0 0% 32%;
+    --ring: 158 64% 51%;
+    --chart-1: 156 71% 66%;
+    --chart-2: 141 76% 73%;
+    --chart-3: 170 76% 64%;
+    --chart-4: 81 84% 67%;
+    --chart-5: 0 0% 45%;
+    --sidebar: 0 0% 14%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 158 64% 51%;
+    --sidebar-primary-foreground: 165 91% 9%;
+    --sidebar-accent: 172 66% 50%;
+    --sidebar-accent-foreground: 178 84% 10%;
+    --sidebar-border: 0 0% 32%;
+    --sidebar-ring: 158 64% 51%;
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   }
 }
 
@@ -99,6 +176,6 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
-  
+
   @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap');
 }
