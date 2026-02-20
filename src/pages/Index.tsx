@@ -7,6 +7,8 @@ import { SplineScene } from "@/components/ui/splite";
 import { Spotlight } from "@/components/ui/spotlight";
 import { Card } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { RainMonogram } from "@/components/RainMonogram";
+import { motion } from "framer-motion";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dna");
@@ -22,12 +24,23 @@ const Index = () => {
         <div className="flex flex-col md:flex-row h-full min-h-[500px] md:min-h-[600px]">
           {/* Left content */}
           <div className="flex-1 p-8 md:p-12 relative z-10 flex flex-col justify-center">
-            <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60">
+            <RainMonogram />
+            <motion.h1
+              className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.6, ease: "easeOut" }}
+            >
               R.A.I.N. Lab
-            </h1>
-            <p className="mt-4 text-muted-foreground max-w-lg text-base md:text-lg">
+            </motion.h1>
+            <motion.p
+              className="mt-4 text-muted-foreground max-w-lg text-base md:text-lg"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.85, duration: 0.6, ease: "easeOut" }}
+            >
               Transform genetic sequences into immersive soundscapes. Explore the music hidden within DNA through synthesis, cymatics, and wetware computing.
-            </p>
+            </motion.p>
           </div>
 
           {/* Right content - Spline 3D */}
