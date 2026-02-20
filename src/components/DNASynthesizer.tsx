@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import * as Tone from "tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Play, Pause, FlaskConical, Music } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Play, Pause, FlaskConical, Music, Copy, RotateCcw, Shuffle, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { DNAVisualizer } from "./DNAVisualizer";
-import { FrequencyInfo } from "./FrequencyInfo";
 import { EvolutionaryMode, EvolutionMutation } from "./EvolutionaryMode";
 import { QuantumOverlay } from "./QuantumOverlay";
 import { BiofeedbackInput } from "./BiofeedbackInput";
@@ -42,6 +42,7 @@ export const DNASynthesizer = () => {
   const [selectedTab, setSelectedTab] = useState("visualizer");
   const [organismName, setOrganismName] = useState("Custom");
   const [currentKey, setCurrentKey] = useState("f-sharp");
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   
   // Advanced features state
   const [evolutionEnabled, setEvolutionEnabled] = useState(false);
@@ -55,12 +56,12 @@ export const DNASynthesizer = () => {
   
   // Calculate frequencies based on current key
   const keyMultiplier = getKeyMultiplier(currentKey);
-  const DNA_FREQUENCIES = {
+  const DNA_FREQUENCIES = useMemo(() => ({
     A: BASE_DNA_FREQUENCIES.A * keyMultiplier,
     T: BASE_DNA_FREQUENCIES.T * keyMultiplier,
     C: BASE_DNA_FREQUENCIES.C * keyMultiplier,
     G: BASE_DNA_FREQUENCIES.G * keyMultiplier,
-  };
+  }), [keyMultiplier]);
   
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const sequenceRef = useRef<Tone.Sequence | null>(null);
@@ -163,7 +164,7 @@ export const DNASynthesizer = () => {
         }, time);
       },
       validBases,
-      `${4 / currentMutation.tempoVariation}n` // Apply tempo variation
+      `${4 / (currentMutation.tempoVariation * playbackSpeed)}n` // Apply tempo variation and playback speed
     );
 
     sequenceRef.current.start(0);
@@ -173,7 +174,7 @@ export const DNASynthesizer = () => {
       ? "Listening to DNA evolving in real-time..." 
       : "Listening to the song of DNA..."
     );
-  }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled, keyMultiplier]);
+  }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled, playbackSpeed, DNA_FREQUENCIES]);
 
   const stopSequence = () => {
     Tone.Transport.stop();
@@ -197,6 +198,74 @@ export const DNASynthesizer = () => {
     toast.success(`Loaded ${name} DNA sequence`);
   };
 
+
+  const generateRandomSequence = () => {
+    const bases = ["A", "T", "C", "G"];
+    const randomLength = 16;
+    const randomSequence = Array.from({ length: randomLength }, () => {
+      const randomBase = Math.floor(Math.random() * bases.length);
+      return bases[randomBase];
+    }).join("");
+
+    if (isPlaying) {
+      stopSequence();
+    }
+
+    setSequence(randomSequence);
+    setOrganismName("Randomized");
+    toast.success("Generated a new randomized DNA sequence");
+  };
+
+  const resetToDefaultSequence = () => {
+    if (isPlaying) {
+      stopSequence();
+    }
+
+    setSequence("ACGTACGT");
+    setOrganismName("Custom");
+    toast.success("Reset to default DNA motif");
+  };
+
+  const copySequence = async () => {
+    if (!sequence) {
+      toast.error("No sequence to copy yet");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(sequence);
+      toast.success("DNA sequence copied to clipboard");
+    } catch {
+      toast.error("Clipboard unavailable in this environment");
+    }
+  };
+
+  const shareSequence = async () => {
+    if (!sequence) {
+      toast.error("No sequence to share yet");
+      return;
+    }
+
+    const sharePayload = {
+      title: "DNA is F♯",
+      text: `Listen to my DNA melody: ${sequence}`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(sharePayload);
+        toast.success("Shared DNA sequence");
+      } catch {
+        toast.error("Share cancelled");
+      }
+      return;
+    }
+
+    await copySequence();
+    toast.info("Sharing is unsupported here, so the sequence was copied instead");
+  };
+
   const handleMutation = useCallback((mutation: EvolutionMutation) => {
     setCurrentMutation(mutation);
     if (isPlaying) {
@@ -204,7 +273,7 @@ export const DNASynthesizer = () => {
       stopSequence();
       setTimeout(() => playSequence(), 100);
     }
-  }, [isPlaying]);
+  }, [isPlaying, playSequence]);
 
   const handleBiofeedback = useCallback((modulation: number) => {
     setBiofeedbackModulation(modulation);
@@ -256,6 +325,46 @@ export const DNASynthesizer = () => {
               <p className="text-xs text-muted-foreground">
                 Enter up to 32 bases (A, T, C, G)
               </p>
+
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+                <Button variant="secondary" size="sm" onClick={generateRandomSequence}>
+                  <Shuffle className="mr-2 h-4 w-4" />
+                  Random
+                </Button>
+                <Button variant="secondary" size="sm" onClick={copySequence}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy
+                </Button>
+                <Button variant="secondary" size="sm" onClick={shareSequence}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share
+                </Button>
+                <Button variant="outline" size="sm" onClick={resetToDefaultSequence}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset
+                </Button>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Playback speed</span>
+                  <span>{playbackSpeed.toFixed(1)}×</span>
+                </div>
+                <Slider
+                  value={[playbackSpeed]}
+                  min={0.5}
+                  max={2}
+                  step={0.1}
+                  onValueChange={(value) => {
+                    const nextSpeed = value[0];
+                    setPlaybackSpeed(nextSpeed);
+                    if (isPlaying) {
+                      stopSequence();
+                      setTimeout(() => playSequence(), 100);
+                    }
+                  }}
+                />
+              </div>
             </div>
 
             {/* Controls - Desktop only */}
