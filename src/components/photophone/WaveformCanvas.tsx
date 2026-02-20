@@ -20,25 +20,38 @@ export const WaveformCanvas = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number>(0);
   const signalFnRef = useRef(signalFn);
+  const dimsRef = useRef({ w: 0, h: 0 });
 
   useEffect(() => {
     signalFnRef.current = signalFn;
   }, [signalFn]);
 
-  // Handle canvas sizing
+  // Handle canvas sizing with debounce to prevent mobile chrome bounce glitches
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const resize = () => {
+    let resizeTimer: ReturnType<typeof setTimeout>;
+
+    const applyResize = () => {
       const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
       canvas.width = rect.width;
       canvas.height = rect.height;
+      dimsRef.current = { w: rect.width, h: rect.height };
     };
 
-    resize();
+    const resize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(applyResize, 150);
+    };
+
+    applyResize();
     window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   // Animation loop
@@ -48,12 +61,12 @@ export const WaveformCanvas = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const draw = () => {
-      const { width, height } = canvas;
-      if (width === 0 || height === 0) {
-        rafRef.current = requestAnimationFrame(draw);
-        return;
-      }
+      const draw = () => {
+        const { w: width, h: height } = dimsRef.current;
+        if (width === 0 || height === 0) {
+          rafRef.current = requestAnimationFrame(draw);
+          return;
+        }
 
       const now = performance.now() / 1000;
 
