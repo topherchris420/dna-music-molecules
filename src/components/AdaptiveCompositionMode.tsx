@@ -1,15 +1,15 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Shuffle, 
-  Upload, 
-  Dna, 
-  Sparkles, 
+import {
+  Shuffle,
+  Upload,
+  Dna,
+  Sparkles,
   RefreshCw,
   FileText,
   Wand2
@@ -39,9 +39,9 @@ const PRESET_PATTERNS = [
   { name: "Codon Cascade", pattern: "ATGATGATG", repeats: 3 },
 ];
 
-export const AdaptiveCompositionMode = ({ 
-  onSequenceGenerated, 
-  isPlaying 
+export const AdaptiveCompositionMode = ({
+  onSequenceGenerated,
+  isPlaying
 }: AdaptiveCompositionModeProps) => {
   const [enabled, setEnabled] = useState(false);
   const [mode, setMode] = useState<GenerationMode>("random");
@@ -54,7 +54,7 @@ export const AdaptiveCompositionMode = ({
   const generateRandomSequence = useCallback((length: number): string => {
     const bases = ["A", "T", "C", "G"];
     let sequence = "";
-    
+
     if (mode === "random") {
       for (let i = 0; i < length; i++) {
         sequence += bases[Math.floor(Math.random() * 4)];
@@ -98,17 +98,36 @@ export const AdaptiveCompositionMode = ({
       }
       sequence = sequence.slice(0, length);
     }
-    
+
     return sequence;
   }, [mode, weights, generatedSequence]);
 
-  const handleGenerate = () => {
+  const handleGenerate = useCallback(() => {
     const newSequence = generateRandomSequence(sequenceLength);
     setGeneratedSequence(newSequence);
     const modeName = GENERATION_MODES.find(m => m.id === mode)?.label || "Random";
     onSequenceGenerated(newSequence, `${modeName} Composition`);
     toast.success(`Generated ${sequenceLength}-base ${modeName.toLowerCase()} sequence`);
-  };
+  }, [generateRandomSequence, sequenceLength, mode, onSequenceGenerated]);
+
+  // Auto-evolve logic
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    // Only evolve automatically if enabled, in evolutionary mode, and playing
+    if (enabled && mode === "evolutionary" && autoEvolve && isPlaying) {
+      // Evolve every 4 seconds to give people time to hear the motif
+      interval = setInterval(() => {
+        const newSequence = generateRandomSequence(sequenceLength);
+        setGeneratedSequence(newSequence);
+        onSequenceGenerated(newSequence, "Evolved Sequence");
+      }, 4000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [enabled, mode, autoEvolve, isPlaying, generateRandomSequence, sequenceLength, onSequenceGenerated]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -117,7 +136,7 @@ export const AdaptiveCompositionMode = ({
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
-      
+
       // Parse FASTA or plain sequence
       let sequence = "";
       if (content.startsWith(">")) {
@@ -127,13 +146,13 @@ export const AdaptiveCompositionMode = ({
       } else {
         sequence = content;
       }
-      
+
       // Clean and validate
       const cleanedSequence = sequence
         .toUpperCase()
         .replace(/[^ATCG]/g, "")
         .slice(0, 32);
-      
+
       if (cleanedSequence.length > 0) {
         setUploadedData(cleanedSequence);
         setGeneratedSequence(cleanedSequence);
@@ -158,7 +177,7 @@ export const AdaptiveCompositionMode = ({
       sequence = lines.filter(line => !line.startsWith(">")).join("");
     }
     sequence = sequence.replace(/[^ATCG]/g, "").slice(0, 32);
-    
+
     if (sequence.length > 0) {
       setGeneratedSequence(sequence);
       onSequenceGenerated(sequence, "Pasted Sequence");
@@ -217,7 +236,7 @@ export const AdaptiveCompositionMode = ({
             return (
               <Button
                 key={m.id}
-                variant={mode === m.id ? "default" : "outline"}
+                variant={(mode === m.id ? "default" : "outline") as any}
                 size="sm"
                 className="flex-col h-auto py-3 gap-1"
                 onClick={() => setMode(m.id as GenerationMode)}
@@ -257,9 +276,9 @@ export const AdaptiveCompositionMode = ({
             <div key={base} className="flex items-center gap-3">
               <span className="w-6 text-xs font-mono font-bold" style={{
                 color: base === "A" ? "hsl(var(--dna-adenine))" :
-                       base === "T" ? "hsl(var(--dna-thymine))" :
-                       base === "C" ? "hsl(var(--dna-cytosine))" :
-                       "hsl(var(--dna-guanine))"
+                  base === "T" ? "hsl(var(--dna-thymine))" :
+                    base === "C" ? "hsl(var(--dna-cytosine))" :
+                      "hsl(var(--dna-guanine))"
               }}>{base}</span>
               <Slider
                 value={[weights[base]]}
@@ -283,7 +302,7 @@ export const AdaptiveCompositionMode = ({
             {PRESET_PATTERNS.map((preset) => (
               <Button
                 key={preset.name}
-                variant="ghost"
+                variant={"ghost" as any}
                 size="sm"
                 className="text-xs h-auto py-2"
                 onClick={() => {
@@ -308,16 +327,16 @@ export const AdaptiveCompositionMode = ({
             <Switch checked={autoEvolve} onCheckedChange={setAutoEvolve} />
           </div>
           <p className="text-xs text-muted-foreground">
-            {autoEvolve 
-              ? "Sequence will mutate continuously" 
+            {autoEvolve
+              ? "Sequence will mutate continuously"
               : "Click generate to evolve manually"}
           </p>
         </div>
       )}
 
       {/* Generate Button */}
-      <Button 
-        onClick={handleGenerate} 
+      <Button
+        onClick={handleGenerate}
         className="w-full gap-2"
         disabled={isPlaying && autoEvolve}
       >
@@ -331,7 +350,7 @@ export const AdaptiveCompositionMode = ({
           <Upload className="w-3 h-3" />
           Upload Genetic Data
         </Label>
-        
+
         <div className="flex gap-2">
           <label className="flex-1">
             <input
@@ -340,7 +359,7 @@ export const AdaptiveCompositionMode = ({
               onChange={handleFileUpload}
               className="hidden"
             />
-            <Button variant="outline" size="sm" className="w-full gap-2" asChild>
+            <Button variant={"outline" as any} size="sm" className="w-full gap-2" asChild>
               <span>
                 <FileText className="w-4 h-4" />
                 Choose File
@@ -355,11 +374,11 @@ export const AdaptiveCompositionMode = ({
           onChange={(e) => handleTextInput(e.target.value)}
           className="font-mono text-xs h-20 resize-none"
         />
-        
+
         {uploadedData && (
-          <Button 
-            variant="secondary" 
-            size="sm" 
+          <Button
+            variant={"secondary" as any}
+            size="sm"
             className="w-full gap-2"
             onClick={applyUploadedData}
           >
@@ -375,18 +394,18 @@ export const AdaptiveCompositionMode = ({
           <Label className="text-xs text-muted-foreground">Current Sequence</Label>
           <div className="font-mono text-sm tracking-wider flex flex-wrap gap-0.5">
             {generatedSequence.split("").map((base, i) => (
-              <span 
+              <span
                 key={i}
                 className="px-1 rounded"
                 style={{
                   color: base === "A" ? "hsl(var(--dna-adenine))" :
-                         base === "T" ? "hsl(var(--dna-thymine))" :
-                         base === "C" ? "hsl(var(--dna-cytosine))" :
-                         "hsl(var(--dna-guanine))",
+                    base === "T" ? "hsl(var(--dna-thymine))" :
+                      base === "C" ? "hsl(var(--dna-cytosine))" :
+                        "hsl(var(--dna-guanine))",
                   backgroundColor: base === "A" ? "hsla(var(--dna-adenine), 0.1)" :
-                                   base === "T" ? "hsla(var(--dna-thymine), 0.1)" :
-                                   base === "C" ? "hsla(var(--dna-cytosine), 0.1)" :
-                                   "hsla(var(--dna-guanine), 0.1)"
+                    base === "T" ? "hsla(var(--dna-thymine), 0.1)" :
+                      base === "C" ? "hsla(var(--dna-cytosine), 0.1)" :
+                        "hsla(var(--dna-guanine), 0.1)"
                 }}
               >
                 {base}

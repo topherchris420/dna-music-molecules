@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+// @ts-ignore
 import * as Tone from "tone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
-import { Play, Pause, FlaskConical, Music, Copy, RotateCcw, Shuffle, Share2 } from "lucide-react";
+// @ts-ignore
+import { Play, Pause, FlaskConical, Music, Copy, RotateCcw, Shuffle, Share2, Mic, Square, Dna } from "lucide-react";
+// @ts-ignore
 import { toast } from "sonner";
 import { DNAVisualizer } from "./DNAVisualizer";
 import { EvolutionaryMode, EvolutionMutation } from "./EvolutionaryMode";
@@ -35,15 +38,33 @@ const DNA_COLORS = {
 };
 
 export const DNASynthesizer = () => {
-  const [sequence, setSequence] = useState("ACGTACGT");
+  // Initialize sequence from URL if present
+  const initialSequence = useMemo(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const seqParam = params.get("seq");
+      if (seqParam) {
+        const filtered = seqParam.toUpperCase().replace(/[^ATCG]/g, "");
+        if (filtered.length > 0) return filtered;
+      }
+    }
+    return "ACGTACGT";
+  }, []);
+
+  const [sequence, setSequence] = useState(initialSequence);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [showScientificMode, setShowScientificMode] = useState(false);
   const [selectedTab, setSelectedTab] = useState("visualizer");
-  const [organismName, setOrganismName] = useState("Custom");
+  const [organismName, setOrganismName] = useState(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("seq")) {
+      return "Shared Sequence";
+    }
+    return "Custom";
+  });
   const [currentKey, setCurrentKey] = useState("f-sharp");
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  
+
   // Advanced features state
   const [evolutionEnabled, setEvolutionEnabled] = useState(false);
   const [biofeedbackEnabled, setBiofeedbackEnabled] = useState(false);
@@ -53,7 +74,7 @@ export const DNASynthesizer = () => {
     harmonicBlend: 0,
   });
   const [biofeedbackModulation, setBiofeedbackModulation] = useState(0);
-  
+
   // Calculate frequencies based on current key
   const keyMultiplier = getKeyMultiplier(currentKey);
   const DNA_FREQUENCIES = useMemo(() => ({
@@ -62,9 +83,11 @@ export const DNASynthesizer = () => {
     C: BASE_DNA_FREQUENCIES.C * keyMultiplier,
     G: BASE_DNA_FREQUENCIES.G * keyMultiplier,
   }), [keyMultiplier]);
-  
+
+  const [isRecording, setIsRecording] = useState(false);
   const synthRef = useRef<Tone.PolySynth | null>(null);
   const sequenceRef = useRef<Tone.Sequence | null>(null);
+  const recorderRef = useRef<Tone.Recorder | null>(null);
 
   useEffect(() => {
     // Crumar GDS (General Development System, ~1980) — signal chain
@@ -72,7 +95,8 @@ export const DNASynthesizer = () => {
     // 16-stage envelopes. Pioneered by Hal Alles at Bell Labs.
     // Iconic on Wendy Carlos' TRON soundtrack.
 
-    const reverb = new Tone.Reverb({ decay: 4.5, wet: 0.3 }).toDestination();
+    recorderRef.current = new Tone.Recorder();
+    const reverb = new Tone.Reverb({ decay: 4.5, wet: 0.3 }).toDestination().connect(recorderRef.current);
     // Subtle chorus emulates the GDS's slight inter-partial detuning
     const chorus = new Tone.Chorus({ frequency: 0.5, delayTime: 2.8, depth: 0.15, wet: 0.15 }).connect(reverb);
     // EQ3 simulates the GDS's 128-band fixed filter bank — bright top-end presence
@@ -106,6 +130,7 @@ export const DNASynthesizer = () => {
     return () => {
       sequenceRef.current?.dispose();
       synthRef.current?.dispose();
+      recorderRef.current?.dispose();
       reverb.dispose();
       chorus.dispose();
       eq.dispose();
@@ -117,8 +142,8 @@ export const DNASynthesizer = () => {
     if (!synthRef.current) return;
 
     await Tone.start();
-    
-    const validBases = sequence.toUpperCase().split("").filter(base => 
+
+    const validBases = sequence.toUpperCase().split("").filter(base =>
       ["A", "T", "C", "G"].includes(base)
     );
 
@@ -137,13 +162,13 @@ export const DNASynthesizer = () => {
         // Apply evolutionary mutations
         let freq = DNA_FREQUENCIES[base as keyof typeof DNA_FREQUENCIES];
         freq += currentMutation.frequencyDetune * 0.1; // Detune in Hz
-        
+
         // Apply biofeedback modulation to volume
         if (synthRef.current) {
           const volume = -10 + biofeedbackModulation * 10; // -10dB to 0dB
           synthRef.current.volume.value = volume;
         }
-        
+
         // Apply harmonic blending
         if (currentMutation.harmonicBlend > 0.3 && synthRef.current) {
           // Play harmonics
@@ -157,7 +182,7 @@ export const DNASynthesizer = () => {
         } else {
           synthRef.current?.triggerAttackRelease(freq, "4n", time);
         }
-        
+
         Tone.Draw.schedule(() => {
           setCurrentIndex(index);
           index = (index + 1) % validBases.length;
@@ -170,8 +195,8 @@ export const DNASynthesizer = () => {
     sequenceRef.current.start(0);
     Tone.Transport.start();
     setIsPlaying(true);
-    toast.success(evolutionEnabled 
-      ? "Listening to DNA evolving in real-time..." 
+    toast.success(evolutionEnabled
+      ? "Listening to DNA evolving in real-time..."
       : "Listening to the song of DNA..."
     );
   }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled, playbackSpeed, DNA_FREQUENCIES]);
@@ -246,10 +271,13 @@ export const DNASynthesizer = () => {
       return;
     }
 
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("seq", sequence);
+
     const sharePayload = {
       title: "DNA is F♯",
       text: `Listen to my DNA melody: ${sequence}`,
-      url: window.location.href,
+      url: shareUrl.toString(),
     };
 
     if (navigator.share) {
@@ -264,6 +292,33 @@ export const DNASynthesizer = () => {
 
     await copySequence();
     toast.info("Sharing is unsupported here, so the sequence was copied instead");
+  };
+
+  const toggleRecording = async () => {
+    if (!recorderRef.current) return;
+
+    if (isRecording) {
+      setIsRecording(false);
+      try {
+        const recording = await recorderRef.current.stop();
+        const url = URL.createObjectURL(recording);
+        const anchor = document.createElement("a");
+        anchor.download = `dna-composition-${organismName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.webm`;
+        anchor.href = url;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        toast.success("Composition exported successfully");
+      } catch (err) {
+        toast.error("Failed to save recording");
+      }
+    } else {
+      recorderRef.current.start();
+      setIsRecording(true);
+      if (!isPlaying) {
+        playSequence();
+      }
+      toast.success("Recording started");
+    }
   };
 
   const handleMutation = useCallback((mutation: EvolutionMutation) => {
@@ -327,19 +382,19 @@ export const DNASynthesizer = () => {
               </p>
 
               <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                <Button variant="secondary" size="sm" onClick={generateRandomSequence}>
+                <Button variant={"secondary" as any} size="sm" onClick={generateRandomSequence}>
                   <Shuffle className="mr-2 h-4 w-4" />
                   Random
                 </Button>
-                <Button variant="secondary" size="sm" onClick={copySequence}>
+                <Button variant={"secondary" as any} size="sm" onClick={copySequence}>
                   <Copy className="mr-2 h-4 w-4" />
                   Copy
                 </Button>
-                <Button variant="secondary" size="sm" onClick={shareSequence}>
+                <Button variant={"secondary" as any} size="sm" onClick={shareSequence}>
                   <Share2 className="mr-2 h-4 w-4" />
                   Share
                 </Button>
-                <Button variant="outline" size="sm" onClick={resetToDefaultSequence}>
+                <Button variant={"outline" as any} size="sm" onClick={resetToDefaultSequence}>
                   <RotateCcw className="mr-2 h-4 w-4" />
                   Reset
                 </Button>
@@ -371,7 +426,7 @@ export const DNASynthesizer = () => {
             <div className="hidden md:flex gap-4 items-center justify-center">
               <Button
                 onClick={isPlaying ? stopSequence : playSequence}
-                size="lg"
+                size={"lg" as any}
                 className="bg-primary hover:bg-primary/90 text-white rounded-full px-8"
               >
                 {isPlaying ? (
@@ -386,11 +441,30 @@ export const DNASynthesizer = () => {
                   </>
                 )}
               </Button>
-              
+
+              <Button
+                onClick={toggleRecording}
+                variant={(isRecording ? "destructive" : "secondary") as any}
+                size={"lg" as any}
+                className="rounded-full px-8"
+              >
+                {isRecording ? (
+                  <>
+                    <Square className="mr-2 h-5 w-5" />
+                    Stop Rec
+                  </>
+                ) : (
+                  <>
+                    <Mic className="mr-2 h-5 w-5" />
+                    Record
+                  </>
+                )}
+              </Button>
+
               <Button
                 onClick={() => setShowScientificMode(!showScientificMode)}
-                variant="outline"
-                size="lg"
+                variant={"outline" as any}
+                size={"lg" as any}
                 className="border-border hover:bg-muted rounded-full px-8"
               >
                 <FlaskConical className="mr-2 h-5 w-5" />
@@ -400,7 +474,7 @@ export const DNASynthesizer = () => {
 
             {/* Harmony Explorer */}
             <div className="flex justify-center">
-              <HarmonyExplorer 
+              <HarmonyExplorer
                 currentKey={currentKey}
                 onKeyChange={(key) => {
                   setCurrentKey(key);
@@ -423,7 +497,7 @@ export const DNASynthesizer = () => {
                 <TabsTrigger value="quantum">Quantum Field</TabsTrigger>
                 <TabsTrigger value="cymatic">Cymatic 3D</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="visualizer" className="mt-4">
                 <DNAVisualizer
                   sequence={sequence}
@@ -432,7 +506,7 @@ export const DNASynthesizer = () => {
                   colors={DNA_COLORS}
                 />
               </TabsContent>
-              
+
               <TabsContent value="quantum" className="mt-4">
                 <QuantumOverlay
                   frequencies={currentFrequencies}
@@ -440,7 +514,7 @@ export const DNASynthesizer = () => {
                   colors={Object.values(DNA_COLORS)}
                 />
               </TabsContent>
-              
+
               <TabsContent value="cymatic" className="mt-4">
                 <CymaticScene
                   frequencies={currentFrequencies}
@@ -452,8 +526,8 @@ export const DNASynthesizer = () => {
 
             {/* Scientific Mode - Research View */}
             {showScientificMode && (
-              <ScientificMode 
-                frequencies={BASE_DNA_FREQUENCIES} 
+              <ScientificMode
+                frequencies={BASE_DNA_FREQUENCIES}
                 currentKey={currentKey}
                 keyMultiplier={keyMultiplier}
               />
@@ -474,7 +548,7 @@ export const DNASynthesizer = () => {
             onToggle={setEvolutionEnabled}
             onMutation={handleMutation}
           />
-          
+
           <BiofeedbackInput
             enabled={biofeedbackEnabled}
             onToggle={setBiofeedbackEnabled}
@@ -506,9 +580,9 @@ export const DNASynthesizer = () => {
             Mapping infrared vibrational frequencies of DNA bases to musical pitches
           </p>
           <p className="text-xs opacity-70 mt-4">
-            <a 
-              href="https://vers3dynamics.com/" 
-              target="_blank" 
+            <a
+              href="https://vers3dynamics.com/"
+              target="_blank"
               rel="noopener noreferrer"
               className="hover:text-primary transition-colors"
             >
@@ -531,7 +605,7 @@ export const DNASynthesizer = () => {
             onToggle={setEvolutionEnabled}
             onMutation={handleMutation}
           />
-          
+
           <BiofeedbackInput
             enabled={biofeedbackEnabled}
             onToggle={setBiofeedbackEnabled}
@@ -539,15 +613,33 @@ export const DNASynthesizer = () => {
           />
 
           <Button
+            onClick={toggleRecording}
+            variant={(isRecording ? "destructive" : "secondary") as any}
+            className="w-full"
+          >
+            {isRecording ? (
+              <>
+                <Square className="mr-2 h-4 w-4" />
+                Stop Recording
+              </>
+            ) : (
+              <>
+                <Mic className="mr-2 h-4 w-4" />
+                Record Audio
+              </>
+            )}
+          </Button>
+
+          <Button
             onClick={() => setShowScientificMode(!showScientificMode)}
-            variant="outline"
+            variant={"outline" as any}
             className="w-full"
           >
             <FlaskConical className="mr-2 h-4 w-4" />
             {showScientificMode ? "Hide" : "Show"} Research
           </Button>
-          
-          <HarmonyExplorer 
+
+          <HarmonyExplorer
             currentKey={currentKey}
             onKeyChange={(key) => {
               setCurrentKey(key);
