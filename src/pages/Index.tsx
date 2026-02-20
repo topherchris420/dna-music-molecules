@@ -23,7 +23,7 @@ const Index = () => {
           {/* Left content */}
           <div className="flex-1 p-8 md:p-12 relative z-10 flex flex-col justify-center">
             <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60">
-              DNA Sound Lab
+              R.A.I.N. Lab
             </h1>
             <p className="mt-4 text-muted-foreground max-w-lg text-base md:text-lg">
               Transform genetic sequences into immersive soundscapes. Explore the music hidden within DNA through synthesis, cymatics, and wetware computing.
