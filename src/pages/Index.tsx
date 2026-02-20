@@ -31,7 +31,7 @@ const Index = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.6, ease: "easeOut" }}
             >
-              R.A.I.N. Lab
+              Vers3Dynamics
             </motion.h1>
             <motion.p
               className="mt-4 text-muted-foreground max-w-lg text-base md:text-lg"
