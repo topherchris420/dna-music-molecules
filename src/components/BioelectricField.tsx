@@ -28,6 +28,8 @@ export const BioelectricField = ({
   const animRef = useRef<number>(0);
   const timeRef = useRef(0);
   const nodesRef = useRef<{ x: number; y: number; vx: number; vy: number; charge: number }[]>([]);
+  // Store stable canvas logical dimensions to avoid getBoundingClientRect on every frame
+  const dimsRef = useRef({ w: 0, h: 0 });
 
   const initNodes = useCallback((w: number, h: number) => {
     const nodes = [];
@@ -50,24 +52,37 @@ export const BioelectricField = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const resize = () => {
+    let resizeTimer: ReturnType<typeof setTimeout>;
+
+    const applyResize = () => {
       const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
-      if (nodesRef.current.length === 0) initNodes(rect.width, rect.height);
-    };
-
-    resize();
-    window.addEventListener("resize", resize);
-
-    const draw = () => {
       const rect = canvas.getBoundingClientRect();
       const w = rect.width;
       const h = rect.height;
+      if (w === 0 || h === 0) return;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      dimsRef.current = { w, h };
+      if (nodesRef.current.length === 0) initNodes(w, h);
+    };
+
+    // Debounce resize to prevent thrashing on mobile browser chrome bouncing
+    const resize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(applyResize, 150);
+    };
+
+    applyResize();
+    window.addEventListener("resize", resize);
+
+    const draw = () => {
+      const { w, h } = dimsRef.current;
+      if (w === 0 || h === 0) {
+        animRef.current = requestAnimationFrame(draw);
+        return;
+      }
+
       const { h: hue, s: sat, l: light } = MODE_COLORS[entrainmentMode];
 
       // Fade trail
@@ -208,6 +223,7 @@ export const BioelectricField = ({
     animRef.current = requestAnimationFrame(draw);
     return () => {
       cancelAnimationFrame(animRef.current);
+      clearTimeout(resizeTimer);
       window.removeEventListener("resize", resize);
     };
   }, [isActive, baseFrequency, resonanceIntensity, modulationDepth, entrainmentMode, bioelectricActivity, initNodes]);
