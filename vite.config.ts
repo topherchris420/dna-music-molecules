@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: mode === "production" ? "/dna-music-molecules/" : "/",
+  base: process.env.GITHUB_ACTIONS ? "/dna-music-molecules/" : "/",
   server: {
     host: "::",
     port: 8080,
