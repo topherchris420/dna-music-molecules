@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { DNASynthesizer } from "@/components/DNASynthesizer";
 import { WetwareSimulator } from "@/components/WetwareSimulator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,11 +10,36 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { RainMonogram } from "@/components/RainMonogram";
 import { motion } from "framer-motion";
 
+const MadmanMike = lazy(() => import("@/components/MadmanMike").then(m => ({ default: m.MadmanMike })));
+
+const EASTER_EGG_CODE = "mike";
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dna");
+  const [showMadman, setShowMadman] = useState(false);
+  const bufferRef = useRef("");
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (showMadman) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      bufferRef.current = (bufferRef.current + e.key.toLowerCase()).slice(-EASTER_EGG_CODE.length);
+      if (bufferRef.current === EASTER_EGG_CODE) {
+        setShowMadman(true);
+        bufferRef.current = "";
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [showMadman]);
 
   return (
     <div className="min-h-screen">
+      {showMadman && (
+        <Suspense fallback={null}>
+          <MadmanMike onClose={() => setShowMadman(false)} />
+        </Suspense>
+      )}
       {/* Hero Section with Spline 3D + Spotlight */}
       <Card className="w-full border-0 rounded-none bg-background/50 relative overflow-hidden min-h-[500px] md:min-h-[600px]">
         <div className="absolute top-4 right-4 z-20">
