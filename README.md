@@ -125,6 +125,7 @@ This project is open source and available under the MIT License.
 
 ## 📬 Contact
 
+ciao_chris@proton.me
 Built with ❤️ by **Vers3Dynamics**
 
 ---
