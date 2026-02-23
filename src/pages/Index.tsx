@@ -12,7 +12,7 @@ import { motion } from "framer-motion";
 
 const MadmanMike = lazy(() => import("@/components/MadmanMike").then(m => ({ default: m.MadmanMike })));
 
-const EASTER_EGG_CODE = "mike";
+const EASTER_EGG_CODE = "fun";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dna");
