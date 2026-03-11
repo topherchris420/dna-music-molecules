@@ -112,7 +112,7 @@ export const AdaptiveCompositionMode = ({
 
   // Auto-evolve logic
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
 
     // Only evolve automatically if enabled, in evolutionary mode, and playing
     if (enabled && mode === "evolutionary" && autoEvolve && isPlaying) {

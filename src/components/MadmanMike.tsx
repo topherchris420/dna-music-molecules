@@ -26,12 +26,12 @@ const toRGB = (hex: string): [number, number, number] => {
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
 };
 
-// Click zones
-const CLICK_ZONES: Record<string, [number, number, number, number]> = {
-  spark: [155, 55, 300, 115],
-  hammer: [288, 185, 108, 185],
-  pos_plate: [505, 365, 82, 170],
-  neg_plate: [597, 365, 82, 170],
+// Click zones with labels for tooltips
+const CLICK_ZONES: Record<string, { rect: [number, number, number, number]; label: string; hint: string }> = {
+  spark: { rect: [155, 55, 300, 115], label: "⚡ SPARK GAP", hint: "+95M volts" },
+  hammer: { rect: [288, 185, 108, 185], label: "🔨 HAMMER", hint: "+14M volts" },
+  pos_plate: { rect: [505, 365, 82, 170], label: "+ PLATE", hint: "+9M volts" },
+  neg_plate: { rect: [597, 365, 82, 170], label: "− PLATE", hint: "+9M volts" },
 };
 
 const TELE_ZONES: Record<string, [number, number, number, number]> = {
@@ -84,7 +84,7 @@ interface GameState {
   volts: number;
   hammerY: number;
   hammerDir: number;
-  gamePhase: number;
+  gamePhase: number; // 0=intro, 1=build, 2=panel, 3=UFO escape
   teleporting: boolean;
   teleTimer: number;
   teleSuccess: boolean;
@@ -100,16 +100,24 @@ interface GameState {
   voice: VoicePopup;
   ufoX: number;
   ufoY: number;
+  hoveredZone: string | null;
+  introTimer: number;
+  totalClicks: number;
+  peakCombo: number;
+  phaseJustChanged: boolean;
+  phaseChangeTimer: number;
 }
 
 function createInitialState(): GameState {
   return {
-    volts: 0, hammerY: 0, hammerDir: 1, gamePhase: 1,
+    volts: 0, hammerY: 0, hammerDir: 1, gamePhase: 0,
     teleporting: false, teleTimer: 0, teleSuccess: false, gameOver: false,
     combo: 0, comboTimer: 0, shakeFrames: 0, shakeMag: 0, tick: 0,
     clickFlashes: {}, particles: [], arcs: [],
     voice: { text: "", timer: 0, color: GLOW, size: "big" },
     ufoX: WIDTH + 300, ufoY: 220,
+    hoveredZone: null, introTimer: 180, totalClicks: 0, peakCombo: 0,
+    phaseJustChanged: false, phaseChangeTimer: 0,
   };
 }
 
@@ -139,6 +147,13 @@ function triggerShake(s: GameState, mag: number, frames: number) {
 function getShake(s: GameState): [number, number] {
   if (s.shakeFrames <= 0) return [0, 0];
   return [randInt(-s.shakeMag, s.shakeMag), randInt(-s.shakeMag / 2, s.shakeMag / 2)];
+}
+
+function formatVolts(v: number): string {
+  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(2)}B`;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+  return Math.floor(v).toString();
 }
 
 // ─── Drawing helpers ────────────────────────────────────────────────────────
@@ -179,6 +194,101 @@ function drawCRT(ctx: CanvasRenderingContext2D) {
   for (let y = 0; y < HEIGHT; y += 3) {
     ctx.fillRect(0, y, WIDTH, 1);
   }
+}
+
+// ─── Draw hover highlight for clickable zones ──────────────────────────────
+function drawZoneHighlight(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, tick: number, ox: number, oy: number) {
+  const pulse = 0.3 + 0.3 * Math.sin(tick * 0.1);
+  ctx.strokeStyle = `rgba(0,255,170,${pulse.toFixed(2)})`;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(x + ox, y + oy, w, h);
+  ctx.setLineDash([]);
+  // Subtle fill
+  ctx.fillStyle = `rgba(0,255,170,${(pulse * 0.12).toFixed(3)})`;
+  ctx.fillRect(x + ox, y + oy, w, h);
+}
+
+// ─── Draw tooltip ──────────────────────────────────────────────────────────
+function drawTooltip(ctx: CanvasRenderingContext2D, text: string, hint: string, mx: number, my: number) {
+  ctx.font = "bold 14px Consolas, monospace";
+  const tw1 = ctx.measureText(text).width;
+  ctx.font = "12px Consolas, monospace";
+  const tw2 = ctx.measureText(hint).width;
+  const tw = Math.max(tw1, tw2) + 20;
+  const th = 44;
+  let tx = mx + 14;
+  let ty = my - th - 8;
+  if (tx + tw > WIDTH) tx = mx - tw - 8;
+  if (ty < 4) ty = my + 20;
+
+  // Tooltip bg
+  ctx.fillStyle = "rgba(12,16,20,0.92)";
+  ctx.beginPath();
+  ctx.roundRect(tx, ty, tw, th, 6);
+  ctx.fill();
+  ctx.strokeStyle = GLOW;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = GLOW;
+  ctx.font = "bold 14px Consolas, monospace";
+  ctx.fillText(text, tx + 10, ty + 18);
+  ctx.fillStyle = AMBER;
+  ctx.font = "12px Consolas, monospace";
+  ctx.fillText(hint, tx + 10, ty + 36);
+}
+
+// ─── Intro overlay ─────────────────────────────────────────────────────────
+function drawIntro(ctx: CanvasRenderingContext2D, timer: number, tick: number) {
+  const progress = 1 - timer / 180;
+  const alpha = timer > 30 ? 0.88 : (timer / 30) * 0.88;
+
+  ctx.fillStyle = `rgba(8,12,16,${alpha.toFixed(2)})`;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  if (timer > 60) {
+    const textAlpha = Math.min(1, (180 - timer) / 40);
+    ctx.globalAlpha = textAlpha;
+    glowText(ctx, "MADMAN MIKE'S", WIDTH / 2 - 180, HEIGHT / 2 - 80, GOLD, 42, true, tick);
+    glowText(ctx, "FREE ENERGY TELEPORTER", WIDTH / 2 - 260, HEIGHT / 2 - 30, GLOW, 36, false, tick);
+
+    if (timer < 140) {
+      ctx.fillStyle = "#8a9a8a";
+      ctx.font = "16px Consolas, monospace";
+      const t1 = "Click the machine parts to build energy!";
+      ctx.fillText(t1, WIDTH / 2 - ctx.measureText(t1).width / 2, HEIGHT / 2 + 40);
+    }
+    if (timer < 100) {
+      ctx.fillStyle = AMBER;
+      ctx.font = "14px Consolas, monospace";
+      const t2 = "Build combos by clicking fast • Reach 1 BILLION volts to teleport";
+      ctx.fillText(t2, WIDTH / 2 - ctx.measureText(t2).width / 2, HEIGHT / 2 + 70);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Progress bar at bottom
+  ctx.fillStyle = "rgba(0,255,170,0.3)";
+  ctx.fillRect(0, HEIGHT - 4, WIDTH * progress, 4);
+}
+
+// ─── Phase transition banner ────────────────────────────────────────────────
+function drawPhaseTransition(ctx: CanvasRenderingContext2D, timer: number, tick: number) {
+  if (timer <= 0) return;
+  const alpha = Math.min(1, timer / 30) * 0.85;
+  const y = HEIGHT / 2 - 30;
+
+  ctx.fillStyle = `rgba(0,0,0,${(alpha * 0.6).toFixed(2)})`;
+  ctx.fillRect(0, y - 20, WIDTH, 80);
+
+  ctx.globalAlpha = alpha;
+  glowText(ctx, "◈ TELEPORT PANEL UNLOCKED ◈", WIDTH / 2 - 260, y + 15, GLOW, 32, true, tick);
+  ctx.fillStyle = `rgba(255,170,30,${alpha.toFixed(2)})`;
+  ctx.font = "14px Consolas, monospace";
+  const sub = "Use boost buttons to charge faster!";
+  ctx.fillText(sub, WIDTH / 2 - ctx.measureText(sub).width / 2, y + 50);
+  ctx.globalAlpha = 1;
 }
 
 // ─── Main drawing ───────────────────────────────────────────────────────────
@@ -266,6 +376,26 @@ function drawMachine(ctx: CanvasRenderingContext2D, s: GameState, ox: number, oy
     }
   }
 
+  // Hover highlights for clickable zones in phase 1
+  if (s.gamePhase >= 1 && !s.gameOver) {
+    for (const [key, zone] of Object.entries(CLICK_ZONES)) {
+      const [zx, zy, zw, zh] = zone.rect;
+      if (s.hoveredZone === key) {
+        drawZoneHighlight(ctx, zx, zy, zw, zh, s.tick, ox, oy);
+      } else if (s.gamePhase === 1 && s.tick < 300) {
+        // Gentle pulsing border on all zones early on to guide players
+        const earlyPulse = Math.max(0, 0.15 * (1 - s.tick / 300) * (0.5 + 0.5 * Math.sin(s.tick * 0.08 + Object.keys(CLICK_ZONES).indexOf(key))));
+        if (earlyPulse > 0.01) {
+          ctx.strokeStyle = `rgba(0,255,170,${earlyPulse.toFixed(3)})`;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 6]);
+          ctx.strokeRect(zx + ox, zy + oy, zw, zh);
+          ctx.setLineDash([]);
+        }
+      }
+    }
+  }
+
   // Labels
   ctx.fillStyle = GOLD;
   ctx.font = "15px Consolas, monospace";
@@ -315,6 +445,10 @@ function drawTeleportPanel(ctx: CanvasRenderingContext2D, s: GameState, ox: numb
     ctx.roundRect(580 + ox, 182 + oy, Math.floor(340 * pct), 18, 4);
     ctx.fill();
   }
+  // Percentage label on progress bar
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 11px Consolas, monospace";
+  ctx.fillText(`${(pct * 100).toFixed(1)}%`, 740 + ox, 195 + oy);
 
   // Buttons
   const btns: [string, string, string][] = [
@@ -327,12 +461,16 @@ function drawTeleportPanel(ctx: CanvasRenderingContext2D, s: GameState, ox: numb
     const [label, color, key] = btns[i];
     const by = 220 + i * 58;
     const flash = s.clickFlashes[`tele_${key}`] || 0;
+    const isHovered = s.hoveredZone === `tele_${key}`;
     const [cr, cg, cb] = toRGB(color);
     let bcol: string;
+    const isDisabled = key === "activate" && s.volts < TARGET * 0.95;
     if (flash > 0) {
       bcol = `rgb(${Math.min(255, cr + 80)},${Math.min(255, cg + 80)},${Math.min(255, cb + 80)})`;
-    } else if (key === "activate" && s.volts < TARGET * 0.95) {
+    } else if (isDisabled) {
       bcol = "#283c32";
+    } else if (isHovered) {
+      bcol = `rgb(${Math.min(255, cr + 30)},${Math.min(255, cg + 30)},${Math.min(255, cb + 30)})`;
     } else {
       bcol = color;
     }
@@ -340,10 +478,25 @@ function drawTeleportPanel(ctx: CanvasRenderingContext2D, s: GameState, ox: numb
     ctx.beginPath();
     ctx.roundRect(580 + ox, by + oy, 340, 46, 6);
     ctx.fill();
+
+    // Hover outline
+    if (isHovered && !isDisabled) {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
     ctx.fillStyle = flash > 0 ? "#000" : BG;
     ctx.font = "bold 22px Consolas, monospace";
     const tw = ctx.measureText(label).width;
     ctx.fillText(label, 580 + 170 - tw / 2 + ox, by + 30 + oy);
+
+    // Disabled text
+    if (isDisabled) {
+      ctx.fillStyle = "#4a6050";
+      ctx.font = "11px Consolas, monospace";
+      ctx.fillText("NEED 95%+ CHARGE", 690 + ox, by + 42 + oy);
+    }
   }
 
   // Coordinates
@@ -378,10 +531,14 @@ function drawVoltmeter(ctx: CanvasRenderingContext2D, s: GameState, ox: number, 
     ctx.font = "22px Consolas, monospace";
     ctx.fillText(`×${s.combo} COMBO!`, 370 + ox, 618 + oy);
   }
+
+  // Mini stats
+  ctx.fillStyle = "#3c5050";
+  ctx.font = "11px Consolas, monospace";
+  ctx.fillText(`CLICKS: ${s.totalClicks}  │  PEAK COMBO: ×${s.peakCombo}  │  TARGET: ${formatVolts(TARGET)}`, 80 + ox, 656 + oy);
 }
 
 function drawUFO(ctx: CanvasRenderingContext2D, ux: number, uy: number, tick: number) {
-  // Body
   ctx.fillStyle = "#b4b4d2";
   ctx.beginPath();
   ctx.ellipse(ux, uy + 47, 110, 27, 0, 0, Math.PI * 2);
@@ -390,7 +547,6 @@ function drawUFO(ctx: CanvasRenderingContext2D, ux: number, uy: number, tick: nu
   ctx.lineWidth = 8;
   ctx.stroke();
 
-  // Dome
   ctx.fillStyle = "#50d2ff";
   ctx.beginPath();
   ctx.ellipse(ux, uy - 3, 48, 34, 0, 0, Math.PI * 2);
@@ -399,7 +555,6 @@ function drawUFO(ctx: CanvasRenderingContext2D, ux: number, uy: number, tick: nu
   ctx.lineWidth = 6;
   ctx.stroke();
 
-  // Antenna
   ctx.strokeStyle = METAL;
   ctx.lineWidth = 9;
   ctx.beginPath();
@@ -411,7 +566,6 @@ function drawUFO(ctx: CanvasRenderingContext2D, ux: number, uy: number, tick: nu
   ctx.arc(ux, uy - 110, 9, 0, Math.PI * 2);
   ctx.fill();
 
-  // Rings
   for (let i = 0; i < 5; i++) {
     const r = 125 + i * 12 + Math.floor(8 * Math.sin(tick * 0.3 + i));
     ctx.strokeStyle = `rgba(0,255,170,${(0.12 - i * 0.02).toFixed(2)})`;
@@ -422,6 +576,29 @@ function drawUFO(ctx: CanvasRenderingContext2D, ux: number, uy: number, tick: nu
   }
 }
 
+// ─── Close button ───────────────────────────────────────────────────────────
+function drawCloseButton(ctx: CanvasRenderingContext2D, hovered: boolean) {
+  const x = WIDTH - 40;
+  const y = 8;
+  const size = 28;
+
+  ctx.fillStyle = hovered ? "rgba(255,50,50,0.6)" : "rgba(60,70,85,0.6)";
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size, 6);
+  ctx.fill();
+
+  ctx.strokeStyle = hovered ? "#ff6666" : "#8a9aa0";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + 8, y + 8);
+  ctx.lineTo(x + size - 8, y + size - 8);
+  ctx.moveTo(x + size - 8, y + 8);
+  ctx.lineTo(x + 8, y + size - 8);
+  ctx.stroke();
+}
+
+const CLOSE_BTN_RECT = [WIDTH - 40, 8, 28, 28] as const;
+
 // ─── Component ──────────────────────────────────────────────────────────────
 interface MadmanMikeProps {
   onClose: () => void;
@@ -431,25 +608,85 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<GameState>(createInitialState());
   const animFrameRef = useRef<number>(0);
+  const mouseRef = useRef<{ x: number; y: number }>({ x: -1, y: -1 });
   const [, forceUpdate] = useState(0);
 
-  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  const getCanvasCoords = useCallback((clientX: number, clientY: number): [number, number] => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return [0, 0];
     const rect = canvas.getBoundingClientRect();
-    const scaleX = WIDTH / rect.width;
-    const scaleY = HEIGHT / rect.height;
-    const mx = (e.clientX - rect.left) * scaleX;
-    const my = (e.clientY - rect.top) * scaleY;
+    return [(clientX - rect.left) * WIDTH / rect.width, (clientY - rect.top) * HEIGHT / rect.height];
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const [mx, my] = getCanvasCoords(e.clientX, e.clientY);
+    mouseRef.current = { x: mx, y: my };
     const s = stateRef.current;
+    s.hoveredZone = null;
+
+    // Check close button
+    if (mx >= CLOSE_BTN_RECT[0] && mx <= CLOSE_BTN_RECT[0] + CLOSE_BTN_RECT[2] &&
+        my >= CLOSE_BTN_RECT[1] && my <= CLOSE_BTN_RECT[1] + CLOSE_BTN_RECT[3]) {
+      s.hoveredZone = "close";
+      return;
+    }
+
+    if (s.gameOver || s.gamePhase === 0) return;
+
+    if (s.gamePhase === 1) {
+      for (const [key, zone] of Object.entries(CLICK_ZONES)) {
+        const [x, y, w, h] = zone.rect;
+        if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
+          s.hoveredZone = key;
+          return;
+        }
+      }
+    }
+    if (s.gamePhase >= 2) {
+      for (const [key, [x, y, w, h]] of Object.entries(TELE_ZONES)) {
+        if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
+          s.hoveredZone = `tele_${key}`;
+          return;
+        }
+      }
+      // Also check machine zones in phase 2
+      for (const [key, zone] of Object.entries(CLICK_ZONES)) {
+        const [x, y, w, h] = zone.rect;
+        if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
+          s.hoveredZone = key;
+          return;
+        }
+      }
+    }
+  }, [getCanvasCoords]);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const [mx, my] = getCanvasCoords(e.clientX, e.clientY);
+    const s = stateRef.current;
+
+    // Close button
+    if (mx >= CLOSE_BTN_RECT[0] && mx <= CLOSE_BTN_RECT[0] + CLOSE_BTN_RECT[2] &&
+        my >= CLOSE_BTN_RECT[1] && my <= CLOSE_BTN_RECT[1] + CLOSE_BTN_RECT[3]) {
+      onClose();
+      return;
+    }
+
+    // Skip intro on click
+    if (s.gamePhase === 0) {
+      s.introTimer = Math.min(s.introTimer, 30);
+      return;
+    }
 
     if (s.gameOver) return;
 
-    if (s.gamePhase === 1) {
-      for (const [key, [x, y, w, h]] of Object.entries(CLICK_ZONES)) {
+    if (s.gamePhase >= 1) {
+      for (const [key, zone] of Object.entries(CLICK_ZONES)) {
+        const [x, y, w, h] = zone.rect;
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
           s.comboTimer = 180;
           s.combo = Math.min(s.combo + 1, 10);
+          s.totalClicks++;
+          s.peakCombo = Math.max(s.peakCombo, s.combo);
           const mult = 1 + (s.combo - 1) * 0.4;
           if (key === "spark") {
             s.volts += 95_000_000 * mult;
@@ -475,13 +712,16 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
             triggerShake(s, 4, 6);
             playBeep(920, 35, 0.28);
           }
-          break;
+          return;
         }
       }
-    } else if (s.gamePhase === 2) {
+    }
+
+    if (s.gamePhase >= 2) {
       for (const [key, [x, y, w, h]] of Object.entries(TELE_ZONES)) {
         if (mx >= x && mx <= x + w && my >= y && my <= y + h) {
           s.clickFlashes[`tele_${key}`] = 10;
+          s.totalClicks++;
           if (key === "activate" && s.volts >= TARGET * 0.95) {
             s.teleporting = true;
             s.teleSuccess = Math.random() > 0.18;
@@ -492,6 +732,7 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
             triggerShake(s, 6, 8);
             s.comboTimer = 180;
             s.combo = Math.min(s.combo + 1, 10);
+            s.peakCombo = Math.max(s.peakCombo, s.combo);
             playBeep(680, 180, 0.42);
           } else if (key === "lightning") {
             s.volts += 18_000_000 * (1 + (s.combo - 1) * 0.3);
@@ -504,11 +745,24 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
             triggerShake(s, 7, 9);
             playBeep(1350, 90, 0.4);
           }
-          break;
+          return;
         }
       }
     }
-  }, []);
+  }, [getCanvasCoords, onClose]);
+
+  // Touch support
+  const handleTouch = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const touch = e.touches[0] || e.changedTouches[0];
+    if (!touch) return;
+    const [mx, my] = getCanvasCoords(touch.clientX, touch.clientY);
+    // Simulate click via synthetic mouse event logic
+    handleClick({
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+    } as React.MouseEvent<HTMLCanvasElement>);
+  }, [getCanvasCoords, handleClick]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const s = stateRef.current;
@@ -518,6 +772,10 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
     if (e.key.toLowerCase() === "r" && s.gameOver) {
       Object.assign(stateRef.current, createInitialState());
       forceUpdate((n) => n + 1);
+    }
+    // Skip intro with any key
+    if (s.gamePhase === 0 && e.key !== "Escape") {
+      s.introTimer = Math.min(s.introTimer, 30);
     }
   }, [onClose]);
 
@@ -535,6 +793,14 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
     const loop = () => {
       const s = stateRef.current;
       s.tick++;
+
+      // Intro countdown
+      if (s.gamePhase === 0) {
+        s.introTimer--;
+        if (s.introTimer <= 0) {
+          s.gamePhase = 1;
+        }
+      }
 
       // Update hammer
       s.hammerY += s.hammerDir * 14 * (16 / 16);
@@ -576,7 +842,14 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
       }
 
       // Phase transition
-      if (s.volts > TARGET * 0.28 && s.gamePhase === 1) s.gamePhase = 2;
+      if (s.volts > TARGET * 0.28 && s.gamePhase === 1) {
+        s.gamePhase = 2;
+        s.phaseJustChanged = true;
+        s.phaseChangeTimer = 120;
+        playBeep(600, 300, 0.3);
+      }
+
+      if (s.phaseChangeTimer > 0) s.phaseChangeTimer--;
 
       // Teleport
       if (s.teleporting) {
@@ -652,13 +925,13 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
       glowText(ctx, "FREE ENERGY DEVICE", 340 + ox, 36 + oy, GOLD, 36, true, s.tick);
 
       // Instructions
-      if (!s.gameOver) {
+      if (!s.gameOver && s.gamePhase >= 1) {
         ctx.fillStyle = "#5a645a";
         ctx.font = "15px Consolas, monospace";
         ctx.fillText(
           s.gamePhase === 1
-            ? "CLICK SPARK • HAMMER • PLATES  │  BUILD COMBO"
-            : "CHARGE >95% → ACTIVATE  │  BOOST BUTTONS",
+            ? "CLICK SPARK • HAMMER • PLATES  │  BUILD COMBO  │  ESC to exit"
+            : "CHARGE >95% → ACTIVATE  │  BOOST BUTTONS  │  ESC to exit",
           70, HEIGHT - 10
         );
       }
@@ -695,15 +968,35 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
         } else {
           glowText(ctx, "DEVICE MELTDOWN", WIDTH / 2 - 220, HEIGHT / 2 - 80, RED, 36, true, s.tick);
         }
+
+        // Stats
+        ctx.fillStyle = "#8a9a9a";
+        ctx.font = "16px Consolas, monospace";
+        ctx.fillText(`Total Clicks: ${s.totalClicks}  │  Peak Combo: ×${s.peakCombo}  │  Final Volts: ${formatVolts(s.volts)}`, WIDTH / 2 - 280, HEIGHT / 2 + 40);
+
         ctx.fillStyle = "#c8c8c8";
         ctx.font = "22px Consolas, monospace";
-        ctx.fillText("[ R ] — RESTART", WIDTH / 2 - 110, HEIGHT / 2 + 100);
+        ctx.fillText("[ R ] — RESTART    [ ESC ] — EXIT", WIDTH / 2 - 210, HEIGHT / 2 + 100);
       }
 
-      // ESC hint
-      ctx.fillStyle = "#3c4650";
-      ctx.font = "12px Consolas, monospace";
-      ctx.fillText("ESC to exit", WIDTH - 90, HEIGHT - 6);
+      // Phase transition banner
+      if (s.phaseChangeTimer > 0) {
+        drawPhaseTransition(ctx, s.phaseChangeTimer, s.tick);
+      }
+
+      // Close button (always visible)
+      drawCloseButton(ctx, s.hoveredZone === "close");
+
+      // Tooltip for hovered zone
+      if (s.hoveredZone && s.hoveredZone !== "close" && !s.hoveredZone.startsWith("tele_") && CLICK_ZONES[s.hoveredZone]) {
+        const zone = CLICK_ZONES[s.hoveredZone];
+        drawTooltip(ctx, zone.label, zone.hint, mouseRef.current.x, mouseRef.current.y);
+      }
+
+      // Intro overlay (drawn last)
+      if (s.gamePhase === 0) {
+        drawIntro(ctx, s.introTimer, s.tick);
+      }
 
       drawCRT(ctx);
 
@@ -716,7 +1009,7 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -726,8 +1019,11 @@ export const MadmanMike = ({ onClose }: MadmanMikeProps) => {
         width={WIDTH}
         height={HEIGHT}
         onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => { stateRef.current.hoveredZone = null; }}
+        onTouchStart={handleTouch}
         className="max-w-full max-h-full cursor-crosshair rounded-lg shadow-2xl shadow-emerald-500/20 border border-emerald-900/40"
-        style={{ imageRendering: "auto" }}
+        style={{ imageRendering: "auto", touchAction: "none" }}
       />
     </div>
   );
