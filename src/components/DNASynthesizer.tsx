@@ -439,8 +439,7 @@ export const DNASynthesizer = () => {
                     const nextSpeed = value[0];
                     setPlaybackSpeed(nextSpeed);
                     if (isPlaying) {
-                      stopSequence();
-                      setTimeout(() => playSequence(), 100);
+                      restartSequence();
                     }
                   }}
                 />
