@@ -503,8 +503,7 @@ export const DNASynthesizer = () => {
                 onKeyChange={(key) => {
                   setCurrentKey(key);
                   if (isPlaying) {
-                    stopSequence();
-                    setTimeout(() => playSequence(), 100);
+                    restartSequence();
                   }
                   toast.success(`Shifted to ${key === "f-sharp" ? "F♯" : key.toUpperCase()} key`);
                 }}
