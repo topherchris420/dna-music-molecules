@@ -152,8 +152,12 @@ export const DNASynthesizer = () => {
       return;
     }
 
+    // Clean up previous sequence and transport to prevent overlapping audio
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
     if (sequenceRef.current) {
       sequenceRef.current.dispose();
+      sequenceRef.current = null;
     }
 
     let index = 0;
@@ -166,7 +170,7 @@ export const DNASynthesizer = () => {
         // Apply biofeedback modulation to volume
         if (synthRef.current) {
           const volume = -10 + biofeedbackModulation * 10; // -10dB to 0dB
-          synthRef.current.volume.value = volume;
+          synthRef.current.volume.rampTo(volume, 0.05, time);
         }
 
         // Apply harmonic blending
@@ -201,12 +205,17 @@ export const DNASynthesizer = () => {
     );
   }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled, playbackSpeed, DNA_FREQUENCIES]);
 
-  const stopSequence = () => {
+  const stopSequence = useCallback(() => {
     Tone.Transport.stop();
-    sequenceRef.current?.stop();
+    Tone.Transport.cancel();
+    if (sequenceRef.current) {
+      sequenceRef.current.stop();
+      sequenceRef.current.dispose();
+      sequenceRef.current = null;
+    }
     setIsPlaying(false);
     setCurrentIndex(-1);
-  };
+  }, []);
 
   const handleSequenceChange = (value: string) => {
     const filtered = value.toUpperCase().replace(/[^ATCG]/g, "");
@@ -321,14 +330,30 @@ export const DNASynthesizer = () => {
     }
   };
 
+  // Debounced restart to prevent overlapping restarts
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restartSequence = useCallback(() => {
+    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    stopSequence();
+    restartTimerRef.current = setTimeout(() => {
+      restartTimerRef.current = null;
+      playSequence();
+    }, 80);
+  }, [stopSequence, playSequence]);
+
+  // Clean up restart timer on unmount
+  useEffect(() => {
+    return () => {
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    };
+  }, []);
+
   const handleMutation = useCallback((mutation: EvolutionMutation) => {
     setCurrentMutation(mutation);
     if (isPlaying) {
-      // Restart sequence with new mutations
-      stopSequence();
-      setTimeout(() => playSequence(), 100);
+      restartSequence();
     }
-  }, [isPlaying, playSequence]);
+  }, [isPlaying, restartSequence]);
 
   const handleBiofeedback = useCallback((modulation: number) => {
     setBiofeedbackModulation(modulation);
@@ -414,8 +439,7 @@ export const DNASynthesizer = () => {
                     const nextSpeed = value[0];
                     setPlaybackSpeed(nextSpeed);
                     if (isPlaying) {
-                      stopSequence();
-                      setTimeout(() => playSequence(), 100);
+                      restartSequence();
                     }
                   }}
                 />
@@ -479,8 +503,7 @@ export const DNASynthesizer = () => {
                 onKeyChange={(key) => {
                   setCurrentKey(key);
                   if (isPlaying) {
-                    stopSequence();
-                    setTimeout(() => playSequence(), 100);
+                    restartSequence();
                   }
                   toast.success(`Shifted to ${key === "f-sharp" ? "F♯" : key.toUpperCase()} key`);
                 }}

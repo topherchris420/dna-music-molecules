@@ -9,11 +9,13 @@ interface DNAVisualizerProps {
 
 // DNA base colors matching CSS variables
 const BASE_COLORS: Record<string, { h: number; s: number; l: number }> = {
-  A: { h: 180, s: 100, l: 50 }, // Adenine - cyan (matches --dna-adenine)
-  T: { h: 30, s: 100, l: 55 },  // Thymine - orange (matches --dna-thymine)
-  C: { h: 320, s: 90, l: 60 },  // Cytosine - magenta (matches --dna-cytosine)
-  G: { h: 120, s: 80, l: 50 },  // Guanine - green (matches --dna-guanine)
+  A: { h: 180, s: 100, l: 50 }, // Adenine - cyan
+  T: { h: 30, s: 100, l: 55 },  // Thymine - orange
+  C: { h: 320, s: 90, l: 60 },  // Cytosine - magenta
+  G: { h: 120, s: 80, l: 50 },  // Guanine - green
 };
+
+const MAX_PARTICLES = 150;
 
 export const DNAVisualizer = ({
   sequence,
@@ -23,15 +25,20 @@ export const DNAVisualizer = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const particlesRef = useRef<Array<{
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    base: string;
-    alpha: number;
-    size: number;
+    x: number; y: number; vx: number; vy: number;
+    base: string; alpha: number; size: number;
   }>>([]);
   const wavePhaseRef = useRef(0);
+  // Store props in refs so animation loop never needs to restart
+  const sequenceRef = useRef(sequence);
+  const currentIndexRef = useRef(currentIndex);
+  const isPlayingRef = useRef(isPlaying);
+  const dimsRef = useRef({ width: 0, height: 0 });
+
+  // Keep refs in sync with props (no re-mount)
+  sequenceRef.current = sequence;
+  currentIndexRef.current = currentIndex;
+  isPlayingRef.current = isPlaying;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -40,27 +47,39 @@ export const DNAVisualizer = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    let width = 0;
-    let height = 0;
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
     const resizeCanvas = () => {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
-      width = rect.width;
-      height = rect.height;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+      dimsRef.current.width = rect.width;
+      dimsRef.current.height = rect.height;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    const debouncedResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resizeCanvas, 150);
     };
 
     resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
+    window.addEventListener("resize", debouncedResize);
 
     const particles = particlesRef.current;
 
     const animate = () => {
+      const { width, height } = dimsRef.current;
+      if (width === 0 || height === 0) {
+        animationRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
+      const seq = sequenceRef.current;
+      const idx = currentIndexRef.current;
+      const playing = isPlayingRef.current;
+
       // Clear with gradient fade
       const gradient = ctx.createLinearGradient(0, 0, 0, height);
       gradient.addColorStop(0, "rgba(10, 15, 25, 0.15)");
@@ -69,14 +88,13 @@ export const DNAVisualizer = ({
       ctx.fillRect(0, 0, width, height);
 
       // Animate wave phase
-      if (isPlaying) {
+      if (playing) {
         wavePhaseRef.current += 0.03;
       }
 
       // Draw background waveform visualization
-      const validBases = sequence.toUpperCase().split("").filter(b => BASE_COLORS[b]);
+      const validBases = seq.toUpperCase().split("").filter(b => BASE_COLORS[b]);
       if (validBases.length > 0) {
-        // Draw subtle wave pattern
         ctx.beginPath();
         for (let x = 0; x < width; x++) {
           const progress = x / width;
@@ -89,11 +107,8 @@ export const DNAVisualizer = ({
               Math.sin(x * 0.02 + wavePhaseRef.current) * 20 +
               Math.sin(x * 0.05 + wavePhaseRef.current * 1.5) * 10;
             
-            if (x === 0) {
-              ctx.moveTo(x, waveY);
-            } else {
-              ctx.lineTo(x, waveY);
-            }
+            if (x === 0) ctx.moveTo(x, waveY);
+            else ctx.lineTo(x, waveY);
           }
         }
         ctx.strokeStyle = "rgba(100, 150, 200, 0.1)";
@@ -102,25 +117,25 @@ export const DNAVisualizer = ({
       }
 
       // Add particles when playing
-      if (isPlaying && currentIndex >= 0) {
-        const base = sequence[currentIndex % sequence.length]?.toUpperCase();
+      if (playing && idx >= 0 && particles.length < MAX_PARTICLES) {
+        const base = seq[idx % seq.length]?.toUpperCase();
         if (base && BASE_COLORS[base]) {
-          for (let i = 0; i < 4; i++) {
+          for (let i = 0; i < 3; i++) {
             particles.push({
               x: width / 2 + (Math.random() - 0.5) * 100,
               y: height / 2,
               vx: (Math.random() - 0.5) * 6,
               vy: (Math.random() - 0.5) * 6 - 2,
-              base,
-              alpha: 1,
+              base, alpha: 1,
               size: 3 + Math.random() * 4,
             });
           }
         }
       }
 
-      // Update and draw particles
-      for (let i = particles.length - 1; i >= 0; i--) {
+      // Update and draw particles (reverse iterate, swap-remove)
+      let writeIdx = 0;
+      for (let i = 0; i < particles.length; i++) {
         const particle = particles[i];
         particle.x += particle.vx;
         particle.y += particle.vy;
@@ -128,29 +143,27 @@ export const DNAVisualizer = ({
         particle.alpha *= 0.96;
         particle.vx *= 0.99;
 
-        if (particle.alpha < 0.01 || particles.length > 200) {
-          particles.splice(i, 1);
-          continue;
-        }
+        if (particle.alpha < 0.01) continue;
+
+        // Keep particle
+        if (writeIdx !== i) particles[writeIdx] = particle;
+        writeIdx++;
 
         const color = BASE_COLORS[particle.base];
         if (color) {
           ctx.beginPath();
           ctx.arc(particle.x, particle.y, particle.size * particle.alpha, 0, Math.PI * 2);
           ctx.fillStyle = `hsla(${color.h}, ${color.s}%, ${color.l}%, ${particle.alpha * 0.8})`;
-          ctx.fill();
-
-          // Glow
           ctx.shadowBlur = 12;
           ctx.shadowColor = `hsl(${color.h}, ${color.s}%, ${color.l}%)`;
           ctx.fill();
           ctx.shadowBlur = 0;
         }
       }
+      particles.length = writeIdx;
 
       // Draw DNA base sequence
       if (validBases.length === 0) {
-        // Draw placeholder text
         ctx.fillStyle = "rgba(100, 120, 150, 0.5)";
         ctx.font = "14px system-ui";
         ctx.textAlign = "center";
@@ -165,43 +178,41 @@ export const DNAVisualizer = ({
       const totalWidth = spacing * (validBases.length - 1);
       const startX = (width - totalWidth) / 2;
 
-      // Draw connecting lines first
-      validBases.forEach((base, index) => {
-        if (index < validBases.length - 1) {
-          const x = startX + index * spacing;
-          const nextX = startX + (index + 1) * spacing;
-          const y = height / 2;
-          const color = BASE_COLORS[base];
-          const nextColor = BASE_COLORS[validBases[index + 1]];
+      // Draw connecting lines
+      for (let index = 0; index < validBases.length - 1; index++) {
+        const base = validBases[index];
+        const x = startX + index * spacing;
+        const nextX = startX + (index + 1) * spacing;
+        const y = height / 2;
+        const color = BASE_COLORS[base];
+        const nextColor = BASE_COLORS[validBases[index + 1]];
+        
+        if (color && nextColor) {
+          const grad = ctx.createLinearGradient(x, y, nextX, y);
+          grad.addColorStop(0, `hsla(${color.h}, ${color.s}%, ${color.l}%, 0.3)`);
+          grad.addColorStop(1, `hsla(${nextColor.h}, ${nextColor.s}%, ${nextColor.l}%, 0.3)`);
           
-          if (color && nextColor) {
-            const gradient = ctx.createLinearGradient(x, y, nextX, y);
-            gradient.addColorStop(0, `hsla(${color.h}, ${color.s}%, ${color.l}%, 0.3)`);
-            gradient.addColorStop(1, `hsla(${nextColor.h}, ${nextColor.s}%, ${nextColor.l}%, 0.3)`);
-            
-            ctx.beginPath();
-            ctx.moveTo(x + 15, y);
-            ctx.lineTo(nextX - 15, y);
-            ctx.strokeStyle = gradient;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
+          ctx.beginPath();
+          ctx.moveTo(x + 15, y);
+          ctx.lineTo(nextX - 15, y);
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 2;
+          ctx.stroke();
         }
-      });
+      }
 
       // Draw bases
-      validBases.forEach((base, index) => {
+      for (let index = 0; index < validBases.length; index++) {
+        const base = validBases[index];
         const x = startX + index * spacing;
         const y = height / 2;
-        const isActive = index === currentIndex % validBases.length;
+        const isActive = index === idx % validBases.length;
         const pulseScale = isActive ? 1 + Math.sin(wavePhaseRef.current * 3) * 0.15 : 1;
         const scale = (isActive ? 1.5 : 1) * pulseScale;
         const baseRadius = 14;
-
         const color = BASE_COLORS[base];
-        if (!color) return;
+        if (!color) continue;
 
-        // Draw outer glow for active base
         if (isActive) {
           ctx.beginPath();
           ctx.arc(x, y, baseRadius * scale + 8, 0, Math.PI * 2);
@@ -209,12 +220,10 @@ export const DNAVisualizer = ({
           ctx.fill();
         }
 
-        // Draw base circle
         ctx.beginPath();
         ctx.arc(x, y, baseRadius * scale, 0, Math.PI * 2);
         
         if (isActive) {
-          // Create gradient for active base
           const grad = ctx.createRadialGradient(x, y, 0, x, y, baseRadius * scale);
           grad.addColorStop(0, `hsl(${color.h}, ${color.s}%, ${color.l + 15}%)`);
           grad.addColorStop(1, `hsl(${color.h}, ${color.s}%, ${color.l}%)`);
@@ -228,13 +237,12 @@ export const DNAVisualizer = ({
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Draw base letter
         ctx.fillStyle = isActive ? "#ffffff" : "rgba(255, 255, 255, 0.8)";
         ctx.font = `bold ${15 * scale}px 'SF Mono', 'Monaco', monospace`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(base, x, y + 1);
-      });
+      }
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -242,12 +250,11 @@ export const DNAVisualizer = ({
     animate();
 
     return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      window.removeEventListener("resize", resizeCanvas);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      if (resizeTimer) clearTimeout(resizeTimer);
+      window.removeEventListener("resize", debouncedResize);
     };
-  }, [sequence, currentIndex, isPlaying]);
+  }, []); // Empty deps — animation loop lives for component lifetime
 
   return (
     <div className="relative w-full h-72 rounded-xl overflow-hidden border border-border/50 bg-gradient-to-b from-card/40 to-card/20 backdrop-blur-sm">
