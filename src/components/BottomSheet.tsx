@@ -15,7 +15,7 @@ export const BottomSheet = ({ isPlaying, onPlay, onStop, organismName, children 
   return (
     <>
       {/* Mobile: Sticky bottom controls */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 z-40 md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 z-[60] md:hidden">
         <div className="flex items-center gap-3 max-w-screen-xl mx-auto">
           <div className="flex-1 min-w-0">
             <div className="text-xs text-muted-foreground">Now playing</div>
