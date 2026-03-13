@@ -205,12 +205,17 @@ export const DNASynthesizer = () => {
     );
   }, [sequence, currentMutation, biofeedbackModulation, evolutionEnabled, playbackSpeed, DNA_FREQUENCIES]);
 
-  const stopSequence = () => {
+  const stopSequence = useCallback(() => {
     Tone.Transport.stop();
-    sequenceRef.current?.stop();
+    Tone.Transport.cancel();
+    if (sequenceRef.current) {
+      sequenceRef.current.stop();
+      sequenceRef.current.dispose();
+      sequenceRef.current = null;
+    }
     setIsPlaying(false);
     setCurrentIndex(-1);
-  };
+  }, []);
 
   const handleSequenceChange = (value: string) => {
     const filtered = value.toUpperCase().replace(/[^ATCG]/g, "");
