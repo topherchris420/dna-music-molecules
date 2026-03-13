@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+// Button removed — using div with role="button" to avoid nested button DOM error
 import { Badge } from "@/components/ui/badge";
 import { Heart, Play } from "lucide-react";
 import { calculateComplexity, generateWaveform } from "@/utils/dnaAnalysis";
