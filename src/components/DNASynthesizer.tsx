@@ -152,8 +152,12 @@ export const DNASynthesizer = () => {
       return;
     }
 
+    // Clean up previous sequence and transport to prevent overlapping audio
+    Tone.Transport.stop();
+    Tone.Transport.cancel();
     if (sequenceRef.current) {
       sequenceRef.current.dispose();
+      sequenceRef.current = null;
     }
 
     let index = 0;
@@ -166,7 +170,7 @@ export const DNASynthesizer = () => {
         // Apply biofeedback modulation to volume
         if (synthRef.current) {
           const volume = -10 + biofeedbackModulation * 10; // -10dB to 0dB
-          synthRef.current.volume.value = volume;
+          synthRef.current.volume.rampTo(volume, 0.05, time);
         }
 
         // Apply harmonic blending
