@@ -330,14 +330,30 @@ export const DNASynthesizer = () => {
     }
   };
 
+  // Debounced restart to prevent overlapping restarts
+  const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restartSequence = useCallback(() => {
+    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    stopSequence();
+    restartTimerRef.current = setTimeout(() => {
+      restartTimerRef.current = null;
+      playSequence();
+    }, 80);
+  }, [stopSequence, playSequence]);
+
+  // Clean up restart timer on unmount
+  useEffect(() => {
+    return () => {
+      if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
+    };
+  }, []);
+
   const handleMutation = useCallback((mutation: EvolutionMutation) => {
     setCurrentMutation(mutation);
     if (isPlaying) {
-      // Restart sequence with new mutations
-      stopSequence();
-      setTimeout(() => playSequence(), 100);
+      restartSequence();
     }
-  }, [isPlaying, playSequence]);
+  }, [isPlaying, restartSequence]);
 
   const handleBiofeedback = useCallback((modulation: number) => {
     setBiofeedbackModulation(modulation);
