@@ -34,13 +34,15 @@ export const OrganismCard = memo(({
   const waveform = generateWaveform(organism.sequence.slice(0, 16));
 
   return (
-    <Button
+    <div
       onClick={onSelect}
-      variant={isSelected ? "default" : "outline"}
-      className={`h-auto flex-col items-start p-3.5 sm:p-4 min-h-[130px] sm:min-h-[140px] touch-manipulation active:scale-95 transition-all relative group ${
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
+      className={`h-auto flex flex-col items-start p-3.5 sm:p-4 min-h-[130px] sm:min-h-[140px] touch-manipulation active:scale-95 transition-all relative group cursor-pointer rounded-md border text-sm font-medium ${
         isSelected
-          ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2"
-          : "bg-card hover:bg-accent"
+          ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2 border-primary"
+          : "bg-card hover:bg-accent border-border"
       }`}
       aria-pressed={isSelected}
       aria-label={`Select ${organism.name} DNA sequence`}
@@ -110,7 +112,7 @@ export const OrganismCard = memo(({
           <Play className="w-3 h-3" />
         </button>
       )}
-    </Button>
+    </div>
   );
 });
 
